@@ -1,0 +1,120 @@
+% Do not change document class, margins, fonts, etc.
+\documentclass[a4paper,oneside,bibliography=totoc]{scrbook}
+
+% some useful packages (add more as needed)
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\counterwithin{algorithm}{chapter}
+\usepackage{algorithmic}
+\usepackage{csquotes}
+\renewcommand{\algorithmiccomment}[1]{\hfill\textit{// #1}}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage[colorlinks,citecolor=Green]{hyperref}
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep, topsep=2pt}
+\setlist[enumerate]{noitemsep, topsep=2pt}
+
+% Remove running headers, use plain page numbers only
+\usepackage{scrlayer-scrpage}
+\pagestyle{plain}
+
+% Prevent chapters from forcing a new page, while keeping KOMA heading style
+\makeatletter
+\renewcommand\chapter{\if@openright\else\fi
+  \thispagestyle{plain}%
+  \global\@topnum\z@
+  \@afterindentfalse
+  \secdef\@chapter\@schapter}
+\makeatother
+
+% IEEE citation style — IEEEtrantools provides the bbl commands outside the IEEEtran class
+\usepackage{IEEEtrantools}
+\bibliographystyle{IEEEtran}
+\usepackage{microtype}
+
+% example environments
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+
+\begin{document}
+
+\frontmatter
+\subject{Project Outline: IE500 Data Mining}
+\title{Ethnic Bias and Generalization in Facial Attractiveness Prediction}
+\author{Team Number: 3 \\
+        Maxim Froehlich, David Siregar, Timon Kuhl, \\
+        Lars Bullmahn, Jagadeesh Gunti, Simon Heinz}
+\date{April 12, 2026}
+\publishers{{\small Submitted to}\\
+  Prof.\ Dr.\ Christian Bizer\\
+  University of Mannheim\\}
+\maketitle
+
+\mainmatter
+
+\chapter{Problem Description}
+\label{ch:problem}
+
+Automated systems for rating or ranking human faces are increasingly used in applications ranging from online platforms to hiring tools. Unlike many computer vision tasks, facial attractiveness prediction is inherently subjective and culturally shaped, which makes it particularly prone to encoding demographic bias. Models trained on data from a narrow set of ethnic groups may learn cultural beauty standards rather than broadly applicable visual patterns, raising both methodological and ethical concerns. We study this problem as a supervised regression task, where the goal is to predict the mean attractiveness rating assigned by human annotators to a given face image.
+
+Our core research questions are: (1) Does a model trained on SCUT-FBP5500 \cite{liang2018scut} (predominantly Asian/Caucasian) perform significantly worse on MEBeauty \cite{lebedeva2021mebeauty}, which includes Asian, Black, Caucasian, Hispanic, Indian, and Middle Eastern subjects? (2) Does training on the more diverse MEBeauty dataset reduce racial disparities in prediction accuracy? (3) How much predictive performance and fairness can be achieved with ArcFace \cite{deng2019arcface} representations combined with supervised models, and how do these results compare with published deep-learning approaches?
+
+\chapter{Data Acquisition}
+\label{ch:data}
+
+We use two publicly available datasets. \textbf{SCUT-FBP5500} \cite{liang2018scut} contains 5,500 face images (Asian and Caucasian subjects) with attractiveness ratings from 60 annotators per image on a 1--5 scale, available on Kaggle. \textbf{MEBeauty} \cite{lebedeva2021mebeauty} contains 2,550 images across six ethnic groups (Asian, Black, Caucasian, Hispanic, Indian, Middle Eastern) with ratings on a 1--10 scale, available on GitHub (fbplab/MEBeauty-database). We will verify completeness (expected missing rate ${<}1\%$) and check for corrupt files.
+
+For cross-dataset evaluation, we treat the two datasets as separate corpora: models trained on one are tested on the other to quantify generalization failure. To make this comparison meaningful, we rescale both datasets' ratings to $[0,1]$ before modeling. Within MEBeauty, group-stratified splits enable per-ethnicity performance breakdowns.
+
+\chapter{Methodology}
+\label{ch:method}
+
+\section{Preprocessing}
+
+\begin{itemize}
+    \item \textbf{Face Detection \& Alignment:} Standard face detection crops and aligns all images to a consistent resolution across both datasets.
+    \item \textbf{Feature Extraction:} 512-dimensional ArcFace \cite{deng2019arcface} embeddings encode facial geometry and texture, serving as the input feature space for all proposed prediction models.
+    \item \textbf{Normalization:} Rating scores normalized to $[0,1]$; ArcFace vectors $\ell_2$-normalized.
+    \item \textbf{Outlier Handling:} Images with high annotator variance (std~$> 1.0$) flagged; we experiment with their removal.
+\end{itemize}
+
+\section{Proposed Algorithms}
+
+\noindent\textbf{Baseline:} Global mean predictor; Linear Regression on ArcFace embeddings; Ridge Regression ($\alpha \in \{0.01, 0.1, 1, 10, 100\}$ tuned via cross-validation).
+
+\noindent\textbf{Symbolic:} Decision Tree Regressor (max depth $\in \{3,5,7,10\}$, min samples leaf $\in \{5,10,20\}$) --- enables inspection of which embedding dimensions drive predictions.
+
+\noindent\textbf{Ensemble:} Random Forest Regressor ($n\_estimators \in \{100,200,500\}$, max features $\in \{\text{sqrt}, \log_2\}$) with feature importance analysis.
+
+\noindent\textbf{Boosting:} XGBoost Regressor with tuned tree depth, learning rate, and number of estimators to capture nonlinear interactions in the ArcFace embedding space while often outperforming a single tree or bagged ensemble on tabular features.
+
+\noindent\textbf{Neural Baseline:} A small multilayer perceptron on top of ArcFace embeddings, trained with Adam ($lr \in \{10^{-4}, 10^{-5}\}$), batch size 32, up to 30 epochs with early stopping on validation MSE.
+
+Within each dataset, hyperparameters are tuned via stratified 5-fold cross-validation and final evaluation uses an 80/20 stratified train/test split. For cross-dataset evaluation, models are trained on one dataset and tested directly on the other.
+
+\chapter{Evaluation and Expected Results}
+\label{ch:evaluation}
+
+\section{Measuring Success}
+
+\noindent\textbf{Regression metrics:} MSE/RMSE (primary), Pearson Correlation Coefficient (PCC), and MAE.
+
+\noindent\textbf{Generalization:} Train on SCUT, test on MEBeauty (and vice versa). The performance drop quantifies cross-ethnic generalization failure.
+
+\noindent\textbf{Fairness / Bias:} Per-ethnicity RMSE computed within MEBeauty for each model. Disparity summarized via the worst-group versus best-group RMSE gap and ratio, where smaller gaps and ratios closer to 1 indicate fairer performance.
+
+\noindent\textbf{State-of-the-art comparison:} Results benchmarked against published baselines for SCUT-FBP5500 (prior CNN approaches achieve PCC~$\approx 0.90$) and related literature using end-to-end CNN or transformer architectures. These serve as external comparison points rather than models we necessarily reimplement.
+
+\section{Expected Outcomes}
+
+We expect ArcFace-based models to provide a strong and computationally feasible benchmark, while still showing notable cross-dataset performance drops when training on SCUT and testing on MEBeauty. We anticipate higher errors for underrepresented groups (Black, Hispanic, Middle Eastern) in SCUT-trained models and partial mitigation when training on MEBeauty. Decision Tree analysis will expose which embedding dimensions are most culturally biased, and comparison with published CNN/transformer results will help position the performance of our simpler pipeline.
+
+\bibliography{refs}
+
+\end{document}

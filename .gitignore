@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# uv
+uv.lock
+
+# Datasets (download separately, see code/README.md)
+code/MEBeauty-database-main/
+code/SCUT-FBP5500_v2/
+
+# Generated data
+code/data/
+
+# LaTeX build artifacts
+docs/*.aux
+docs/*.bbl
+docs/*.blg
+docs/*.log
+docs/*.synctex.gz
