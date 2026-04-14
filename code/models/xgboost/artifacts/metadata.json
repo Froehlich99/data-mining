@@ -1,0 +1,79 @@
+{
+  "model_name": "xgboost",
+  "feature_cols": [
+    "canthal_tilt",
+    "eye_width_ratio",
+    "eye_height_ratio",
+    "eyebrow_eye_dist",
+    "eye_spacing_ratio",
+    "eye_area_ratio",
+    "scleral_show",
+    "eye_asymmetry",
+    "brow_arch_height",
+    "nose_width_ratio",
+    "nose_length_ratio",
+    "nose_symmetry",
+    "lip_width_ratio",
+    "upper_lip_ratio",
+    "lip_fullness_ratio",
+    "mouth_width_face_ratio",
+    "cupids_bow_ratio",
+    "mouth_chin_ratio",
+    "mouth_symmetry",
+    "facial_symmetry",
+    "face_length_width_ratio",
+    "jaw_width_ratio",
+    "cheekbone_prominence",
+    "interpupillary_ratio",
+    "gonial_angle",
+    "chin_taper",
+    "face_taper_ratio",
+    "eye_symmetry",
+    "midface_ratio",
+    "lower_face_ratio",
+    "upper_face_ratio",
+    "phi_deviation",
+    "facial_thirds_symmetry",
+    "expr_smile",
+    "expr_frown",
+    "expr_jaw_open",
+    "expr_brow_up",
+    "expr_brow_down",
+    "expr_cheek_squint",
+    "expr_eye_squint",
+    "expr_eye_wide",
+    "expr_mouth_pucker"
+  ],
+  "dataset_stats": {
+    "mebeauty": {
+      "mean": 6.150574473417173,
+      "std": 1.3319750890298148
+    },
+    "scut": {
+      "mean": 2.9908909116363636,
+      "std": 0.6881115155620254
+    }
+  },
+  "metrics": {
+    "mae": 0.546,
+    "rmse": 0.7079,
+    "baseline_mae": 0.8165,
+    "improvement_pct": 33.1,
+    "pearson_r": 0.7064,
+    "std_ratio": 0.6551,
+    "mae_bottom_quartile": 0.6944,
+    "mae_top_quartile": 0.7501,
+    "mae_middle": 0.3751
+  },
+  "params": {
+    "n_estimators": 1000,
+    "max_depth": 6,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "early_stopping_rounds": 50
+  },
+  "std_ratio": 0.6551285233249359,
+  "trained_at": "2026-04-14T18:28:32.828976+00:00",
+  "n_features": 42
+}

@@ -1,0 +1,89 @@
+{
+  "model_name": "mlp",
+  "feature_cols": [
+    "canthal_tilt",
+    "eye_width_ratio",
+    "eye_height_ratio",
+    "eyebrow_eye_dist",
+    "eye_spacing_ratio",
+    "eye_area_ratio",
+    "scleral_show",
+    "eye_asymmetry",
+    "brow_arch_height",
+    "nose_width_ratio",
+    "nose_length_ratio",
+    "nose_symmetry",
+    "lip_width_ratio",
+    "upper_lip_ratio",
+    "lip_fullness_ratio",
+    "mouth_width_face_ratio",
+    "cupids_bow_ratio",
+    "mouth_chin_ratio",
+    "mouth_symmetry",
+    "facial_symmetry",
+    "face_length_width_ratio",
+    "jaw_width_ratio",
+    "cheekbone_prominence",
+    "interpupillary_ratio",
+    "gonial_angle",
+    "chin_taper",
+    "face_taper_ratio",
+    "eye_symmetry",
+    "midface_ratio",
+    "lower_face_ratio",
+    "upper_face_ratio",
+    "phi_deviation",
+    "facial_thirds_symmetry",
+    "expr_smile",
+    "expr_frown",
+    "expr_jaw_open",
+    "expr_brow_up",
+    "expr_brow_down",
+    "expr_cheek_squint",
+    "expr_eye_squint",
+    "expr_eye_wide",
+    "expr_mouth_pucker"
+  ],
+  "dataset_stats": {
+    "mebeauty": {
+      "mean": 6.150574473417173,
+      "std": 1.3319750890298148
+    },
+    "scut": {
+      "mean": 2.9908909116363636,
+      "std": 0.6881115155620254
+    }
+  },
+  "metrics": {
+    "mae": 0.5517,
+    "rmse": 0.7151,
+    "baseline_mae": 0.8165,
+    "improvement_pct": 32.4,
+    "pearson_r": 0.6991,
+    "std_ratio": 0.6501,
+    "mae_bottom_quartile": 0.696,
+    "mae_top_quartile": 0.762,
+    "mae_middle": 0.3797
+  },
+  "params": {
+    "hidden_layer_sizes": [
+      128,
+      64,
+      32
+    ],
+    "activation": "relu",
+    "solver": "adam",
+    "alpha": 0.01,
+    "batch_size": 64,
+    "learning_rate": "adaptive",
+    "learning_rate_init": 0.001,
+    "max_iter": 500,
+    "early_stopping": true,
+    "validation_fraction": 0.1,
+    "n_iter_no_change": 30,
+    "random_state": 42
+  },
+  "std_ratio": 0.6500513800230675,
+  "trained_at": "2026-04-14T18:21:47.467434+00:00",
+  "n_features": 42
+}
