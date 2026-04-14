@@ -9,12 +9,12 @@ __pycache__/
 # uv
 uv.lock
 
-# Datasets (download separately, see code/README.md)
+# Datasets (download separately, see README.md)
 code/MEBeauty-database-main/
 code/SCUT-FBP5500_v2/
 
-# Generated data
-code/data/
+# MediaPipe model binary (large, downloaded by process.py setup)
+code/data/face_landmarker_v2_with_blendshapes.task
 
 # LaTeX build artifacts
 docs/*.aux
