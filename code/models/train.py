@@ -30,10 +30,20 @@ from models.base import FEATURE_COLS, augment_features
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FEATURES_CSV = PROJECT_ROOT / "data" / "features.csv"
 
-ALL_MODELS = ["xgboost", "ensemble", "mlp", "quantile", "ranker"]
+ALL_MODELS = [
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "ensemble",
+    "mlp",
+    "quantile",
+    "ranker",
+]
 
 MODEL_REGISTRY: dict[str, tuple[str, str]] = {
     "xgboost": ("models.xgboost.model", "XGBoostBeautyModel"),
+    "lightgbm": ("models.lightgbm.model", "LightGBMBeautyModel"),
+    "catboost": ("models.catboost.model", "CatBoostBeautyModel"),
     "ensemble": ("models.ensemble.model", "StackingBeautyModel"),
     "mlp": ("models.mlp.model", "MLPBeautyModel"),
     "quantile": ("models.quantile.model", "QuantileBeautyModel"),
