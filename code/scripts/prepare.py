@@ -1,43 +1,81 @@
-"""Download the MEBeauty and SCUT-FBP5500 datasets (pinned commits)."""
+"""Download the MEBeauty and SCUT-FBP5500 datasets."""
 
 import subprocess
-import sys
+import zipfile
 from pathlib import Path
+
+import gdown
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-DATASETS = [
-    {
-        "url": "https://github.com/fbplab/MEBeauty-database.git",
-        "commit": "7b849562ee92d99d34d56afa2ebe85e5075f9b20",
-        "target": "MEBeauty-database-main",
-    },
-    {
-        "url": "https://github.com/HCIILAB/SCUT-FBP5500-Database-Release.git",
-        "commit": "bff34ad298ae80e8f9a3e15bbd7290a32b620446",
-        "target": "SCUT-FBP5500_v2",
-    },
-]
+# MEBeauty — git clone pinned to a specific commit
+MEBEAUTY_REPO = "https://github.com/fbplab/MEBeauty-database.git"
+MEBEAUTY_COMMIT = "7b849562ee92d99d34d56afa2ebe85e5075f9b20"
+MEBEAUTY_DIR = "MEBeauty-database-main"
+
+# SCUT-FBP5500 — hosted on Google Drive (not available via git)
+SCUT_GDRIVE_ID = "1w0TorBfTIqbquQVd6k3h_77ypnrvfGwf"
+SCUT_DIR = "SCUT-FBP5500_v2"
+
+
+def download_mebeauty():
+    dest = PROJECT_ROOT / MEBEAUTY_DIR
+    if dest.exists():
+        print(f"Skipping {MEBEAUTY_DIR} (already exists)")
+        return
+
+    print(f"Cloning {MEBEAUTY_DIR} ...")
+    subprocess.run(
+        ["git", "clone", "--single-branch", MEBEAUTY_REPO, str(dest)],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(dest), "checkout", MEBEAUTY_COMMIT],
+        check=True,
+    )
+    print(f"  Pinned to {MEBEAUTY_COMMIT[:12]}")
+
+
+def download_scut():
+    dest = PROJECT_ROOT / SCUT_DIR
+    if dest.exists():
+        print(f"Skipping {SCUT_DIR} (already exists)")
+        return
+
+    zip_path = PROJECT_ROOT / "scut-fbp5500.zip"
+    print(f"Downloading {SCUT_DIR} from Google Drive ...")
+    gdown.download(id=SCUT_GDRIVE_ID, output=str(zip_path), quiet=False)
+
+    print("Extracting ...")
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extractall(PROJECT_ROOT)
+
+    # The zip may extract to a differently-named folder — rename if needed
+    extracted = None
+    for candidate in PROJECT_ROOT.iterdir():
+        if (
+            candidate.is_dir()
+            and "SCUT-FBP5500" in candidate.name
+            and candidate.name != SCUT_DIR
+        ):
+            extracted = candidate
+            break
+
+    if extracted:
+        extracted.rename(dest)
+        print(f"  Renamed {extracted.name} -> {SCUT_DIR}")
+    elif not dest.exists():
+        print(f"  WARNING: expected {SCUT_DIR} after extraction but not found.")
+        print(f"  Check the contents of {zip_path} and place them manually.")
+        return
+
+    zip_path.unlink()
+    print(f"  Done ({SCUT_DIR})")
 
 
 def main():
-    for ds in DATASETS:
-        dest = PROJECT_ROOT / ds["target"]
-        if dest.exists():
-            print(f"Skipping {ds['target']} (already exists)")
-            continue
-
-        print(f"Cloning {ds['target']} ...")
-        subprocess.run(
-            ["git", "clone", "--single-branch", ds["url"], str(dest)],
-            check=True,
-        )
-        subprocess.run(
-            ["git", "-C", str(dest), "checkout", ds["commit"]],
-            check=True,
-        )
-        print(f"  Pinned to {ds['commit'][:12]}")
-
+    download_mebeauty()
+    download_scut()
     print("Done.")
 
 
