@@ -30,8 +30,13 @@ FEATURES_CSV = PROJECT_ROOT / "data" / "features.csv"
 
 ALL_MODELS = ["xgboost", "ensemble", "mlp", "quantile", "ranker"]
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FEATURES_CSV = PROJECT_ROOT / "data" / "features.csv"
+MODEL_REGISTRY: dict[str, tuple[str, str]] = {
+    "xgboost": ("models.xgboost.model", "XGBoostBeautyModel"),
+    "ensemble": ("models.ensemble.model", "StackingBeautyModel"),
+    "mlp": ("models.mlp.model", "MLPBeautyModel"),
+    "quantile": ("models.quantile.model", "QuantileBeautyModel"),
+    "ranker": ("models.ranker.model", "RankerBeautyModel"),
+}
 
 
 def load_data():
@@ -104,29 +109,15 @@ def train_model(
     name: str, X_train, y_train, X_val, y_val, X_test, y_test, ds_stats, **kwargs
 ):
     """Instantiate, train, evaluate, and save a model."""
-    if name == "xgboost":
-        from models.xgboost.model import XGBoostBeautyModel
-
-        model = XGBoostBeautyModel()
-    elif name == "ensemble":
-        from models.ensemble.model import StackingBeautyModel
-
-        model = StackingBeautyModel()
-    elif name == "mlp":
-        from models.mlp.model import MLPBeautyModel
-
-        model = MLPBeautyModel()
-    elif name == "quantile":
-        from models.quantile.model import QuantileBeautyModel
-
-        model = QuantileBeautyModel()
-    elif name == "ranker":
-        from models.ranker.model import RankerBeautyModel
-
-        model = RankerBeautyModel()
-    else:
+    if name not in MODEL_REGISTRY:
         print(f"ERROR: Unknown model '{name}'. Available: {', '.join(ALL_MODELS)}")
         sys.exit(1)
+
+    module_path, class_name = MODEL_REGISTRY[name]
+    import importlib
+
+    module = importlib.import_module(module_path)
+    model = getattr(module, class_name)()
 
     model.dataset_stats = ds_stats
 

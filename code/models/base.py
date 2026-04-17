@@ -60,11 +60,14 @@ FEATURE_COLS = [
     "expr_mouth_pucker",
 ]
 
-EXCLUDED_COLS = {"image_path", "dataset", "gender", "ethnicity", "score", "score_raw", "split", "head_roll"}
 
-
-def augment_features(X: np.ndarray, y: np.ndarray, n_copies: int = 3,
-                     noise_std: float = 0.02, seed: int = 42) -> tuple[np.ndarray, np.ndarray]:
+def augment_features(
+    X: np.ndarray,
+    y: np.ndarray,
+    n_copies: int = 3,
+    noise_std: float = 0.02,
+    seed: int = 42,
+) -> tuple[np.ndarray, np.ndarray]:
     """Create augmented training data by adding gaussian noise to features.
 
     Simulates measurement variance from slightly different landmark positions.
@@ -131,7 +134,9 @@ class BeautyModel(ABC):
         std_ratio = float(np.std(y_pred) / np.std(y_test))
 
         # Baseline: predict the mean
-        baseline_mae = float(mean_absolute_error(y_test, np.full(len(y_test), y_test.mean())))
+        baseline_mae = float(
+            mean_absolute_error(y_test, np.full(len(y_test), y_test.mean()))
+        )
         improvement = (baseline_mae - mae) / baseline_mae * 100
 
         # Per-quartile MAE
@@ -148,9 +153,15 @@ class BeautyModel(ABC):
             "improvement_pct": round(improvement, 1),
             "pearson_r": round(float(r), 4),
             "std_ratio": round(std_ratio, 4),
-            "mae_bottom_quartile": round(float(mean_absolute_error(y_test[bottom_mask], y_pred[bottom_mask])), 4),
-            "mae_top_quartile": round(float(mean_absolute_error(y_test[top_mask], y_pred[top_mask])), 4),
-            "mae_middle": round(float(mean_absolute_error(y_test[mid_mask], y_pred[mid_mask])), 4),
+            "mae_bottom_quartile": round(
+                float(mean_absolute_error(y_test[bottom_mask], y_pred[bottom_mask])), 4
+            ),
+            "mae_top_quartile": round(
+                float(mean_absolute_error(y_test[top_mask], y_pred[top_mask])), 4
+            ),
+            "mae_middle": round(
+                float(mean_absolute_error(y_test[mid_mask], y_pred[mid_mask])), 4
+            ),
         }
         return self.metrics
 

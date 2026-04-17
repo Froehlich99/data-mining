@@ -11,6 +11,8 @@ from sklearn.ensemble import (
     StackingRegressor,
 )
 from sklearn.linear_model import Ridge
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from models.base import BeautyModel
 
@@ -29,19 +31,38 @@ class StackingBeautyModel(BeautyModel):
         y_combined = np.concatenate([y_train, y_val])
 
         base_estimators = [
-            ("xgb", xgb.XGBRegressor(
-                n_estimators=300, max_depth=5, learning_rate=0.05,
-                subsample=0.8, colsample_bytree=0.8, random_state=42,
-            )),
-            ("rf", RandomForestRegressor(
-                n_estimators=300, max_depth=12,
-                min_samples_leaf=5, random_state=42, n_jobs=-1,
-            )),
-            ("gbr", GradientBoostingRegressor(
-                n_estimators=200, max_depth=4,
-                learning_rate=0.05, subsample=0.8, random_state=42,
-            )),
-            ("ridge", Ridge(alpha=1.0)),
+            (
+                "xgb",
+                xgb.XGBRegressor(
+                    n_estimators=300,
+                    max_depth=5,
+                    learning_rate=0.05,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    random_state=42,
+                ),
+            ),
+            (
+                "rf",
+                RandomForestRegressor(
+                    n_estimators=300,
+                    max_depth=12,
+                    min_samples_leaf=5,
+                    random_state=42,
+                    n_jobs=-1,
+                ),
+            ),
+            (
+                "gbr",
+                GradientBoostingRegressor(
+                    n_estimators=200,
+                    max_depth=4,
+                    learning_rate=0.05,
+                    subsample=0.8,
+                    random_state=42,
+                ),
+            ),
+            ("ridge", make_pipeline(StandardScaler(), Ridge(alpha=1.0))),
         ]
 
         self.model = StackingRegressor(
@@ -88,7 +109,9 @@ class StackingBeautyModel(BeautyModel):
 
         for i, (name, estimator) in enumerate(self.model.named_estimators_.items()):
             if hasattr(estimator, "feature_importances_"):
-                weighted_importance += estimator.feature_importances_ * abs(meta_coefs[i])
+                weighted_importance += estimator.feature_importances_ * abs(
+                    meta_coefs[i]
+                )
                 total_weight += abs(meta_coefs[i])
 
         if total_weight > 0:
@@ -99,6 +122,7 @@ class StackingBeautyModel(BeautyModel):
     def shap_analysis(self, X_test: np.ndarray) -> dict[str, float]:
         """SHAP via TreeExplainer on the XGBoost base model (fastest, most informative)."""
         import shap
+
         xgb_model = self.model.named_estimators_["xgb"]
         explainer = shap.TreeExplainer(xgb_model)
         shap_values = explainer.shap_values(X_test)
