@@ -16,9 +16,13 @@ code/SCUT-FBP5500_v2/
 # MediaPipe model binary (large, downloaded by process.py setup)
 code/data/face_landmarker_v2_with_blendshapes.task
 
+code/models/xgboost/artifacts/metadata.json
+
 # LaTeX build artifacts
 docs/*.aux
 docs/*.bbl
 docs/*.blg
 docs/*.log
 docs/*.synctex.gz
+
+.direnv
