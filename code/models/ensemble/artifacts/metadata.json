@@ -23,26 +23,14 @@
     "facial_symmetry",
     "face_length_width_ratio",
     "jaw_width_ratio",
-    "cheekbone_prominence",
     "interpupillary_ratio",
     "gonial_angle",
     "chin_taper",
-    "face_taper_ratio",
     "eye_symmetry",
     "midface_ratio",
     "lower_face_ratio",
-    "upper_face_ratio",
     "phi_deviation",
-    "facial_thirds_symmetry",
-    "expr_smile",
-    "expr_frown",
-    "expr_jaw_open",
-    "expr_brow_up",
-    "expr_brow_down",
-    "expr_cheek_squint",
-    "expr_eye_squint",
-    "expr_eye_wide",
-    "expr_mouth_pucker"
+    "facial_thirds_symmetry"
   ],
   "dataset_stats": {
     "mebeauty": {
@@ -55,15 +43,15 @@
     }
   },
   "metrics": {
-    "mae": 0.5426,
-    "rmse": 0.7039,
-    "baseline_mae": 0.8165,
-    "improvement_pct": 33.5,
-    "pearson_r": 0.7108,
-    "std_ratio": 0.6567,
-    "mae_bottom_quartile": 0.6835,
-    "mae_top_quartile": 0.7466,
-    "mae_middle": 0.3754
+    "mae": 0.4012,
+    "rmse": 0.5094,
+    "baseline_mae": 0.7943,
+    "improvement_pct": 49.5,
+    "pearson_r": 0.8526,
+    "std_ratio": 0.7407,
+    "mae_bottom_quartile": 0.4239,
+    "mae_top_quartile": 0.5277,
+    "mae_middle": 0.3267
   },
   "params": {
     "base_estimators": [
@@ -74,9 +62,9 @@
     ],
     "meta_learner": "ridge",
     "cv_folds": 5,
-    "n_train": 5167
+    "n_train": 7870
   },
-  "std_ratio": 0.6567144701581864,
-  "trained_at": "2026-04-14T18:15:53.523316+00:00",
-  "n_features": 42
+  "std_ratio": 0.7406629116317878,
+  "trained_at": "2026-04-17T04:32:41.178616+00:00",
+  "n_features": 30
 }

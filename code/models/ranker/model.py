@@ -25,7 +25,7 @@ class RankerBeautyModel(XGBoostBaseModel):
         # Sorted training z-scores for inverse CDF mapping
         self._sorted_train_scores: np.ndarray | None = None
 
-    def train(self, X_train, y_train, X_val, y_val, **kwargs) -> dict:
+    def train(self, X_train, y_train, X_val, y_val, tune=False, n_trials=200) -> dict:
         X_combined = np.vstack([X_train, X_val])
         y_combined = np.concatenate([y_train, y_val])
 
@@ -36,22 +36,84 @@ class RankerBeautyModel(XGBoostBaseModel):
         y_ranks_train = self._to_ranks(y_train, y_combined)
         y_ranks_val = self._to_ranks(y_val, y_combined)
 
-        self.params = {
-            "n_estimators": 1000,
-            "max_depth": 6,
-            "learning_rate": 0.05,
-            "subsample": 0.8,
-            "colsample_bytree": 0.8,
-            "early_stopping_rounds": 50,
-        }
-
-        self.model = xgb.XGBRegressor(random_state=42, **self.params)
-        self.model.fit(
-            X_train, y_ranks_train, eval_set=[(X_val, y_ranks_val)], verbose=False
-        )
-        print(f"  Best iteration: {self.model.best_iteration}")
+        if tune:
+            self.params = self._tune_ranker(
+                X_train,
+                y_ranks_train,
+                X_val,
+                y_ranks_val,
+                n_trials,
+            )
+            self.model = xgb.XGBRegressor(random_state=42, **self.params)
+            X_ranks_combined = self._to_ranks(y_combined, y_combined)
+            self.model.fit(X_combined, X_ranks_combined)
+            print(
+                f"  Trained on train+val ({len(X_combined)} samples) with tuned params"
+            )
+        else:
+            self.params = {
+                "n_estimators": 1000,
+                "max_depth": 6,
+                "learning_rate": 0.05,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+                "early_stopping_rounds": 50,
+            }
+            self.model = xgb.XGBRegressor(random_state=42, **self.params)
+            self.model.fit(
+                X_train,
+                y_ranks_train,
+                eval_set=[(X_val, y_ranks_val)],
+                verbose=False,
+            )
+            print(f"  Best iteration: {self.model.best_iteration}")
 
         return self.params
+
+    def _tune_ranker(self, X_train, y_ranks_train, X_val, y_ranks_val, n_trials):
+        """Optuna tuning with rank-transformed targets already applied."""
+        import optuna
+        from sklearn.model_selection import cross_val_score
+
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+        X_combined = np.vstack([X_train, X_val])
+        y_combined = np.concatenate([y_ranks_train, y_ranks_val])
+
+        def objective(trial):
+            params = {
+                "n_estimators": trial.suggest_int("n_estimators", 100, 800),
+                "max_depth": trial.suggest_int("max_depth", 2, 8),
+                "learning_rate": trial.suggest_float(
+                    "learning_rate", 0.01, 0.3, log=True
+                ),
+                "subsample": trial.suggest_float("subsample", 0.5, 1.0),
+                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.3, 1.0),
+                "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 10.0, log=True),
+                "reg_lambda": trial.suggest_float("reg_lambda", 1e-8, 10.0, log=True),
+                "min_child_weight": trial.suggest_int("min_child_weight", 1, 30),
+                "gamma": trial.suggest_float("gamma", 1e-8, 5.0, log=True),
+                "random_state": 42,
+            }
+            model = xgb.XGBRegressor(**params)
+            scores = cross_val_score(
+                model,
+                X_combined,
+                y_combined,
+                cv=5,
+                scoring="neg_mean_absolute_error",
+                n_jobs=-1,
+            )
+            return -scores.mean()
+
+        study = optuna.create_study(
+            direction="minimize",
+            sampler=optuna.samplers.TPESampler(seed=42),
+        )
+        study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+
+        print(f"  Optuna: {n_trials} trials, best CV MAE: {study.best_value:.4f}")
+        return study.best_params
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Predict percentile ranks, then map back to z-scores."""

@@ -201,7 +201,7 @@ def main():
     parser.add_argument(
         "--tune",
         action="store_true",
-        help="Run Optuna hyperparameter search (XGBoost only)",
+        help="Run Optuna hyperparameter search (skipped for ensemble)",
     )
     parser.add_argument(
         "--trials", type=int, default=200, help="Number of Optuna trials"
@@ -223,7 +223,7 @@ def main():
 
     for name in models_to_train:
         kwargs = {}
-        if name == "xgboost" and args.tune:
+        if args.tune and name != "ensemble":
             kwargs = {"tune": True, "n_trials": args.trials}
 
         # 1. Cross-validation for robust metrics
