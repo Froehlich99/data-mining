@@ -36,28 +36,15 @@ FEATURE_COLS = [
     "facial_symmetry",
     "face_length_width_ratio",
     "jaw_width_ratio",
-    "cheekbone_prominence",
     "interpupillary_ratio",
     "gonial_angle",
     "chin_taper",
-    "face_taper_ratio",
     "eye_symmetry",
     # Proportions
     "midface_ratio",
     "lower_face_ratio",
-    "upper_face_ratio",
     "phi_deviation",
     "facial_thirds_symmetry",
-    # Expression (blendshapes)
-    "expr_smile",
-    "expr_frown",
-    "expr_jaw_open",
-    "expr_brow_up",
-    "expr_brow_down",
-    "expr_cheek_squint",
-    "expr_eye_squint",
-    "expr_eye_wide",
-    "expr_mouth_pucker",
 ]
 
 

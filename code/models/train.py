@@ -1,5 +1,5 @@
 """
-Train beauty prediction models and save to disk.
+Train beauty prediction models with 5-fold cross-validation.
 
 Usage:
   uv run python -m models.train                        # train xgboost (default)
@@ -13,12 +13,14 @@ Usage:
 """
 
 import argparse
+import importlib
 import random
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import KFold, train_test_split
 
 random.seed(42)
 np.random.seed(42)
@@ -38,6 +40,9 @@ MODEL_REGISTRY: dict[str, tuple[str, str]] = {
     "ranker": ("models.ranker.model", "RankerBeautyModel"),
 }
 
+N_FOLDS = 5
+VAL_FRACTION = 0.1  # fraction of train split used for early stopping
+
 
 def load_data():
     if not FEATURES_CSV.exists():
@@ -45,18 +50,9 @@ def load_data():
         sys.exit(1)
 
     df = pd.read_csv(FEATURES_CSV)
-    train_df = df[df["split"] == "train"]
-    val_df = df[df["split"] == "val"]
-    test_df = df[df["split"] == "test"]
-
-    X_train = train_df[FEATURE_COLS].values
-    y_train = train_df["score"].values
-    X_val = val_df[FEATURE_COLS].values
-    y_val = val_df["score"].values
-    X_test = test_df[FEATURE_COLS].values
-    y_test = test_df["score"].values
-
-    return X_train, y_train, X_val, y_val, X_test, y_test, df
+    X = df[FEATURE_COLS].values
+    y = df["score"].values
+    return X, y, df
 
 
 def dataset_stats(df: pd.DataFrame) -> dict:
@@ -68,36 +64,55 @@ def dataset_stats(df: pd.DataFrame) -> dict:
     return stats
 
 
-def print_results(model, metrics: dict, X_test, feature_cols: list[str]):
+def create_model(name: str):
+    """Instantiate a fresh model by name."""
+    if name not in MODEL_REGISTRY:
+        print(f"ERROR: Unknown model '{name}'. Available: {', '.join(ALL_MODELS)}")
+        sys.exit(1)
+    module_path, class_name = MODEL_REGISTRY[name]
+    module = importlib.import_module(module_path)
+    return getattr(module, class_name)()
+
+
+def print_cv_results(name: str, fold_metrics: list[dict]):
+    """Print aggregated cross-validation results."""
     print()
     print("=" * 55)
-    print(f"  Model:        {model.name}")
-    print(f"  Baseline MAE: {metrics['baseline_mae']:.4f}")
-    print(
-        f"  Test MAE:     {metrics['mae']:.4f}  ({metrics['improvement_pct']:.1f}% better)"
-    )
-    print(f"  Test RMSE:    {metrics['rmse']:.4f}")
-    print(f"  Pearson r:    {metrics['pearson_r']:.4f}")
-    print(f"  Std ratio:    {metrics['std_ratio']:.4f}  (1.0 = perfect spread)")
-    print(f"  MAE (bottom quartile): {metrics['mae_bottom_quartile']:.4f}")
-    print(f"  MAE (top quartile):    {metrics['mae_top_quartile']:.4f}")
-    print(f"  MAE (middle 50%):      {metrics['mae_middle']:.4f}")
+    print(f"  Model:     {name}  ({N_FOLDS}-fold CV)")
+    print("-" * 55)
+
+    keys = ["mae", "rmse", "pearson_r", "baseline_mae", "improvement_pct", "std_ratio"]
+    for key in keys:
+        values = [m[key] for m in fold_metrics]
+        mean = np.mean(values)
+        std = np.std(values)
+        label = {
+            "mae": "MAE",
+            "rmse": "RMSE",
+            "pearson_r": "Pearson r",
+            "baseline_mae": "Baseline MAE",
+            "improvement_pct": "Improvement %",
+            "std_ratio": "Std ratio",
+        }[key]
+        print(f"  {label:<16s} {mean:.4f} ± {std:.4f}")
+
     print("=" * 55)
 
-    # Feature importance
+
+def print_final_model(model, X_all):
+    """Print feature importance and SHAP for the final (all-data) model."""
     importances = model.feature_importances()
     sorted_feats = sorted(importances.items(), key=lambda x: x[1], reverse=True)
-    print("\nFeature Importance:")
+    print("\nFeature Importance (final model):")
     print("-" * 45)
     for rank, (feat, imp) in enumerate(sorted_feats, 1):
         bar = "#" * int(imp * 50)
         print(f"  {rank:2d}. {feat:<28s} {imp:.4f}  {bar}")
 
-    # SHAP
     try:
-        shap_values = model.shap_analysis(X_test)
+        shap_values = model.shap_analysis(X_all)
         sorted_shap = sorted(shap_values.items(), key=lambda x: x[1], reverse=True)
-        print("\nSHAP (mean |SHAP value|):")
+        print("\nSHAP (mean |SHAP value|, final model):")
         print("-" * 45)
         for rank, (feat, val) in enumerate(sorted_shap, 1):
             print(f"  {rank:2d}. {feat:<28s} {val:.4f}")
@@ -105,31 +120,78 @@ def print_results(model, metrics: dict, X_test, feature_cols: list[str]):
         print(f"\nSHAP analysis skipped: {e}")
 
 
-def train_model(
-    name: str, X_train, y_train, X_val, y_val, X_test, y_test, ds_stats, **kwargs
-):
-    """Instantiate, train, evaluate, and save a model."""
-    if name not in MODEL_REGISTRY:
-        print(f"ERROR: Unknown model '{name}'. Available: {', '.join(ALL_MODELS)}")
-        sys.exit(1)
-
-    module_path, class_name = MODEL_REGISTRY[name]
-    import importlib
-
-    module = importlib.import_module(module_path)
-    model = getattr(module, class_name)()
-
-    model.dataset_stats = ds_stats
+def run_cv(name: str, X, y, ds_stats, augment=False, **model_kwargs):
+    """Run k-fold cross-validation for a single model type."""
+    kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
+    fold_metrics = []
 
     print(f"\n{'─' * 55}")
-    print(f"Training: {name}")
+    print(f"Cross-validating: {name} ({N_FOLDS}-fold)")
     print(f"{'─' * 55}")
-    model.train(X_train, y_train, X_val, y_val, **kwargs)
 
-    metrics = model.evaluate(X_test, y_test)
+    for fold, (train_idx, test_idx) in enumerate(kf.split(X)):
+        X_train_full, X_test = X[train_idx], X[test_idx]
+        y_train_full, y_test = y[train_idx], y[test_idx]
+
+        # Split off a validation set for early stopping
+        X_train, X_val, y_train, y_val = train_test_split(
+            X_train_full,
+            y_train_full,
+            test_size=VAL_FRACTION,
+            random_state=42,
+        )
+
+        if augment:
+            X_train, y_train = augment_features(
+                X_train,
+                y_train,
+                n_copies=3,
+                noise_std=0.02,
+            )
+
+        model = create_model(name)
+        model.dataset_stats = ds_stats
+        model.train(X_train, y_train, X_val, y_val, **model_kwargs)
+
+        metrics = model.evaluate(X_test, y_test)
+        fold_metrics.append(metrics)
+        print(
+            f"  Fold {fold + 1}: MAE={metrics['mae']:.4f}  r={metrics['pearson_r']:.4f}"
+        )
+
+    print_cv_results(name, fold_metrics)
+    return fold_metrics
+
+
+def train_final(name: str, X, y, ds_stats, augment=False, **model_kwargs):
+    """Retrain on all data and save model artifacts for deployment."""
+    # Use 10% of all data as val for early stopping
+    X_train, X_val, y_train, y_val = train_test_split(
+        X,
+        y,
+        test_size=VAL_FRACTION,
+        random_state=42,
+    )
+
+    if augment:
+        X_train, y_train = augment_features(
+            X_train,
+            y_train,
+            n_copies=3,
+            noise_std=0.02,
+        )
+
+    model = create_model(name)
+    model.dataset_stats = ds_stats
+
+    print(f"\nRetraining {name} on all data ({len(X)} samples) ...")
+    model.train(X_train, y_train, X_val, y_val, **model_kwargs)
+
+    # Evaluate on the val slice just for metadata (not a true test metric)
+    model.evaluate(X_val, y_val)
     model.save()
-    print_results(model, metrics, X_test, FEATURE_COLS)
 
+    print_final_model(model, X)
     return model
 
 
@@ -149,20 +211,13 @@ def main():
     )
     args = parser.parse_args()
 
-    X_train, y_train, X_val, y_val, X_test, y_test, df = load_data()
+    X, y, df = load_data()
     ds_stats = dataset_stats(df)
 
-    if args.augment:
-        X_train, y_train = augment_features(
-            X_train, y_train, n_copies=3, noise_std=0.02
-        )
-        print(f"Augmented training data: {len(X_train)} samples (4x)")
-
     print(f"Loaded {len(df)} samples from {FEATURES_CSV}")
-    print(f"  Splits: {df['split'].value_counts().to_dict()}")
+    print(f"  Datasets: {df['dataset'].value_counts().to_dict()}")
     print(f"  Score range: {df['score'].min():.2f} to {df['score'].max():.2f}")
     print(f"  Features: {len(FEATURE_COLS)}")
-    print(f"  Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
 
     models_to_train = ALL_MODELS if args.model == "all" else [args.model]
 
@@ -170,9 +225,12 @@ def main():
         kwargs = {}
         if name == "xgboost" and args.tune:
             kwargs = {"tune": True, "n_trials": args.trials}
-        train_model(
-            name, X_train, y_train, X_val, y_val, X_test, y_test, ds_stats, **kwargs
-        )
+
+        # 1. Cross-validation for robust metrics
+        run_cv(name, X, y, ds_stats, augment=args.augment, **kwargs)
+
+        # 2. Retrain on all data and save for deployment
+        train_final(name, X, y, ds_stats, augment=args.augment, **kwargs)
 
     print("\nDone!")
 
