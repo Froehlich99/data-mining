@@ -1,6 +1,7 @@
-"""Download the MEBeauty and SCUT-FBP5500 datasets."""
+"""Download all datasets and models required to run the pipeline."""
 
 import subprocess
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -16,6 +17,12 @@ MEBEAUTY_DIR = "MEBeauty-database-main"
 # SCUT-FBP5500 — hosted on Google Drive (not available via git)
 SCUT_GDRIVE_ID = "1w0TorBfTIqbquQVd6k3h_77ypnrvfGwf"
 SCUT_DIR = "SCUT-FBP5500_v2"
+
+# MediaPipe face landmarker model (required by process.py)
+MEDIAPIPE_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task"
+MEDIAPIPE_MODEL_PATH = (
+    PROJECT_ROOT / "data" / "face_landmarker_v2_with_blendshapes.task"
+)
 
 
 def download_mebeauty():
@@ -73,9 +80,21 @@ def download_scut():
     print(f"  Done ({SCUT_DIR})")
 
 
+def download_mediapipe_model():
+    if MEDIAPIPE_MODEL_PATH.exists():
+        print(f"Skipping {MEDIAPIPE_MODEL_PATH.name} (already exists)")
+        return
+
+    MEDIAPIPE_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Downloading {MEDIAPIPE_MODEL_PATH.name} ...")
+    urllib.request.urlretrieve(MEDIAPIPE_MODEL_URL, MEDIAPIPE_MODEL_PATH)
+    print(f"  Saved to {MEDIAPIPE_MODEL_PATH.relative_to(PROJECT_ROOT)}")
+
+
 def main():
     download_mebeauty()
     download_scut()
+    download_mediapipe_model()
     print("Done.")
 
 
