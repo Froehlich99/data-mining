@@ -23,8 +23,13 @@ uv run scripts/prepare.py
 # 1. Extract features (MediaPipe landmarks -> beauty markers + expression)
 uv run scripts/process.py
 
-# 2. Train XGBoost and evaluate
-uv run scripts/train.py
+# 2. Train models and evaluate (5-fold CV)
+uv run scripts/train.py                    # xgboost (default)
+uv run scripts/train.py --model all        # all models
+uv run scripts/train.py --model xgboost --tune  # with Optuna tuning
+
+# 3. (Optional) AutoGluon benchmark — automated model selection ceiling
+uv run --extra benchmark python scripts/benchmark_autogluon.py --time 600
 ```
 
 ## Results

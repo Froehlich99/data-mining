@@ -17,3 +17,6 @@ dependencies = [
     "flask>=3.1.3",
     "gdown>=5.0",
 ]
+
+[project.optional-dependencies]
+benchmark = ["autogluon.tabular>=1.0", "pyarrow>=23.0.0"]

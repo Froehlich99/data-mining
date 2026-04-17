@@ -24,8 +24,19 @@
             pkgs.uv
             pkgs.texlive.combined.scheme-full
 
+            pkgs.cmake
+            pkgs.pkg-config
+            pkgs.stdenv.cc.cc.lib
+            pkgs.gfortran
+            pkgs.openblas
+
             # required for xgboost on mac
             pkgs.llvmPackages.openmp
+          ];
+
+          
+          buildInputs = [
+            pkgs.arrow-cpp
           ];
 
           shellHook = ''
