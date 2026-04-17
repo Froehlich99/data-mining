@@ -13,11 +13,15 @@ Usage:
 """
 
 import argparse
+import random
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+random.seed(42)
+np.random.seed(42)
 
 from models.base import FEATURE_COLS, augment_features
 
@@ -64,7 +68,9 @@ def print_results(model, metrics: dict, X_test, feature_cols: list[str]):
     print("=" * 55)
     print(f"  Model:        {model.name}")
     print(f"  Baseline MAE: {metrics['baseline_mae']:.4f}")
-    print(f"  Test MAE:     {metrics['mae']:.4f}  ({metrics['improvement_pct']:.1f}% better)")
+    print(
+        f"  Test MAE:     {metrics['mae']:.4f}  ({metrics['improvement_pct']:.1f}% better)"
+    )
     print(f"  Test RMSE:    {metrics['rmse']:.4f}")
     print(f"  Pearson r:    {metrics['pearson_r']:.4f}")
     print(f"  Std ratio:    {metrics['std_ratio']:.4f}  (1.0 = perfect spread)")
@@ -94,22 +100,29 @@ def print_results(model, metrics: dict, X_test, feature_cols: list[str]):
         print(f"\nSHAP analysis skipped: {e}")
 
 
-def train_model(name: str, X_train, y_train, X_val, y_val, X_test, y_test, ds_stats, **kwargs):
+def train_model(
+    name: str, X_train, y_train, X_val, y_val, X_test, y_test, ds_stats, **kwargs
+):
     """Instantiate, train, evaluate, and save a model."""
     if name == "xgboost":
         from models.xgboost.model import XGBoostBeautyModel
+
         model = XGBoostBeautyModel()
     elif name == "ensemble":
         from models.ensemble.model import StackingBeautyModel
+
         model = StackingBeautyModel()
     elif name == "mlp":
         from models.mlp.model import MLPBeautyModel
+
         model = MLPBeautyModel()
     elif name == "quantile":
         from models.quantile.model import QuantileBeautyModel
+
         model = QuantileBeautyModel()
     elif name == "ranker":
         from models.ranker.model import RankerBeautyModel
+
         model = RankerBeautyModel()
     else:
         print(f"ERROR: Unknown model '{name}'. Available: {', '.join(ALL_MODELS)}")
@@ -132,16 +145,26 @@ def train_model(name: str, X_train, y_train, X_val, y_val, X_test, y_test, ds_st
 def main():
     parser = argparse.ArgumentParser(description="Train beauty prediction models")
     parser.add_argument("--model", default="xgboost", choices=ALL_MODELS + ["all"])
-    parser.add_argument("--tune", action="store_true", help="Run Optuna hyperparameter search (XGBoost only)")
-    parser.add_argument("--trials", type=int, default=200, help="Number of Optuna trials")
-    parser.add_argument("--augment", action="store_true", help="Augment training data (4x via noise)")
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Run Optuna hyperparameter search (XGBoost only)",
+    )
+    parser.add_argument(
+        "--trials", type=int, default=200, help="Number of Optuna trials"
+    )
+    parser.add_argument(
+        "--augment", action="store_true", help="Augment training data (4x via noise)"
+    )
     args = parser.parse_args()
 
     X_train, y_train, X_val, y_val, X_test, y_test, df = load_data()
     ds_stats = dataset_stats(df)
 
     if args.augment:
-        X_train, y_train = augment_features(X_train, y_train, n_copies=3, noise_std=0.02)
+        X_train, y_train = augment_features(
+            X_train, y_train, n_copies=3, noise_std=0.02
+        )
         print(f"Augmented training data: {len(X_train)} samples (4x)")
 
     print(f"Loaded {len(df)} samples from {FEATURES_CSV}")
@@ -156,7 +179,9 @@ def main():
         kwargs = {}
         if name == "xgboost" and args.tune:
             kwargs = {"tune": True, "n_trials": args.trials}
-        train_model(name, X_train, y_train, X_val, y_val, X_test, y_test, ds_stats, **kwargs)
+        train_model(
+            name, X_train, y_train, X_val, y_val, X_test, y_test, ds_stats, **kwargs
+        )
 
     print("\nDone!")
 

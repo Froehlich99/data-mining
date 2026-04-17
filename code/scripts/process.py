@@ -10,6 +10,8 @@ import math
 import random
 from pathlib import Path
 
+random.seed(42)
+
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -47,10 +49,10 @@ R_EYE_BOTTOM = 374
 # Eyebrows
 L_BROW_INNER = 55
 L_BROW_OUTER = 46
-L_BROW_TOP = 105   # highest point of left brow arch
+L_BROW_TOP = 105  # highest point of left brow arch
 R_BROW_INNER = 285
 R_BROW_OUTER = 276
-R_BROW_TOP = 334   # highest point of right brow arch
+R_BROW_TOP = 334  # highest point of right brow arch
 L_BROW = 70
 R_BROW = 300
 
@@ -88,8 +90,8 @@ JAW_LEFT = 172
 JAW_RIGHT = 397
 CHIN_CENTER = 152
 # Jaw angle points (along the face oval for gonial angle)
-JAW_ANGLE_LEFT_ABOVE = 162   # above left jaw corner
-JAW_ANGLE_LEFT_BELOW = 150   # below left jaw corner
+JAW_ANGLE_LEFT_ABOVE = 162  # above left jaw corner
+JAW_ANGLE_LEFT_BELOW = 150  # below left jaw corner
 JAW_ANGLE_RIGHT_ABOVE = 389  # above right jaw corner
 JAW_ANGLE_RIGHT_BELOW = 379  # below right jaw corner
 # Chin width points (narrower than jaw)
@@ -98,7 +100,8 @@ CHIN_RIGHT = 399
 
 # Symmetry pairs
 SYMMETRY_PAIRS = [
-    (33, 263), (133, 362),
+    (33, 263),
+    (133, 362),
     (70, 300),
     (129, 358),
     (61, 291),
@@ -140,8 +143,12 @@ def angle_at_vertex(a, vertex, b):
 
 def compute_head_roll(landmarks, w, h):
     """Estimate head roll from the line connecting left and right eye centers."""
-    l_center = (lm_xy(landmarks, L_EYE_OUTER, w, h) + lm_xy(landmarks, L_EYE_INNER, w, h)) / 2
-    r_center = (lm_xy(landmarks, R_EYE_INNER, w, h) + lm_xy(landmarks, R_EYE_OUTER, w, h)) / 2
+    l_center = (
+        lm_xy(landmarks, L_EYE_OUTER, w, h) + lm_xy(landmarks, L_EYE_INNER, w, h)
+    ) / 2
+    r_center = (
+        lm_xy(landmarks, R_EYE_INNER, w, h) + lm_xy(landmarks, R_EYE_OUTER, w, h)
+    ) / 2
     return angle_deg(l_center, r_center)
 
 
@@ -331,7 +338,9 @@ def compute_features(landmarks, w, h):
     # --- Mouth-to-chin ratio ---
     mouth_center = (lip_left + lip_right) / 2
     mouth_chin_dist = abs(face_bottom[1] - mouth_center[1])
-    mouth_chin_ratio = mouth_chin_dist / lower_face_length if lower_face_length > 0 else 0
+    mouth_chin_ratio = (
+        mouth_chin_dist / lower_face_length if lower_face_length > 0 else 0
+    )
 
     # --- Gonial angle (jaw sharpness) ---
     jaw_above_l = lm_xy(lm, JAW_ANGLE_LEFT_ABOVE, w, h)
@@ -441,7 +450,9 @@ def draw_debug_overlay(img, landmarks, w, h, features):
     """Draw landmark overlays on an upscaled image with a legend panel."""
     # Upscale image
     scale = DEBUG_SIZE / max(w, h)
-    img_up = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LANCZOS4)
+    img_up = cv2.resize(
+        img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LANCZOS4
+    )
     sw, sh = img_up.shape[1], img_up.shape[0]
 
     # Create legend panel (dark background on the right)
@@ -610,7 +621,9 @@ def load_mebeauty():
                 p = Path(img_rel).parts
                 gender = p[2] if len(p) > 2 else "unknown"
                 ethnicity = p[3] if len(p) > 3 else "unknown"
-                entries.append((str(img_path), score, split, "mebeauty", gender, ethnicity))
+                entries.append(
+                    (str(img_path), score, split, "mebeauty", gender, ethnicity)
+                )
     return entries
 
 
@@ -634,8 +647,18 @@ def load_scut():
 
                 # Parse gender/ethnicity from filename prefix (AF, AM, CF, CM)
                 prefix = img_name[:2]
-                gender_map = {"AF": "female", "AM": "male", "CF": "female", "CM": "male"}
-                ethnicity_map = {"AF": "asian", "AM": "asian", "CF": "caucasian", "CM": "caucasian"}
+                gender_map = {
+                    "AF": "female",
+                    "AM": "male",
+                    "CF": "female",
+                    "CM": "male",
+                }
+                ethnicity_map = {
+                    "AF": "asian",
+                    "AM": "asian",
+                    "CF": "caucasian",
+                    "CM": "caucasian",
+                }
                 gender = gender_map.get(prefix, "unknown")
                 ethnicity = ethnicity_map.get(prefix, "unknown")
 
@@ -656,11 +679,16 @@ def main():
     print(f"SCUT entries:     {len(scut_entries)}")
     print(f"Total entries:    {len(all_entries)}")
 
-    debug_indices = set(random.sample(range(len(all_entries)), min(NUM_DEBUG_IMAGES, len(all_entries))))
+    debug_indices = set(
+        random.sample(range(len(all_entries)), min(NUM_DEBUG_IMAGES, len(all_entries)))
+    )
     DEBUG_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
 
     # Init MediaPipe
+    # NOTE: MediaPipe has no seed API. Landmark coordinates are deterministic on
+    # the same platform/version but may differ slightly across hardware (ARM vs
+    # x86) or MediaPipe releases due to floating-point rounding in TFLite.
     BaseOptions = mp.tasks.BaseOptions
     FaceLandmarker = mp.tasks.vision.FaceLandmarker
     FaceLandmarkerOptions = mp.tasks.vision.FaceLandmarkerOptions
@@ -708,19 +736,39 @@ def main():
         # Extract expression blendshapes
         if results.face_blendshapes:
             bs_map = {bs.category_name: bs.score for bs in results.face_blendshapes[0]}
-            features["expr_smile"] = (bs_map.get("mouthSmileLeft", 0) + bs_map.get("mouthSmileRight", 0)) / 2
-            features["expr_frown"] = (bs_map.get("mouthFrownLeft", 0) + bs_map.get("mouthFrownRight", 0)) / 2
+            features["expr_smile"] = (
+                bs_map.get("mouthSmileLeft", 0) + bs_map.get("mouthSmileRight", 0)
+            ) / 2
+            features["expr_frown"] = (
+                bs_map.get("mouthFrownLeft", 0) + bs_map.get("mouthFrownRight", 0)
+            ) / 2
             features["expr_jaw_open"] = bs_map.get("jawOpen", 0)
             features["expr_brow_up"] = bs_map.get("browInnerUp", 0)
-            features["expr_brow_down"] = (bs_map.get("browDownLeft", 0) + bs_map.get("browDownRight", 0)) / 2
-            features["expr_cheek_squint"] = (bs_map.get("cheekSquintLeft", 0) + bs_map.get("cheekSquintRight", 0)) / 2
-            features["expr_eye_squint"] = (bs_map.get("eyeSquintLeft", 0) + bs_map.get("eyeSquintRight", 0)) / 2
-            features["expr_eye_wide"] = (bs_map.get("eyeWideLeft", 0) + bs_map.get("eyeWideRight", 0)) / 2
+            features["expr_brow_down"] = (
+                bs_map.get("browDownLeft", 0) + bs_map.get("browDownRight", 0)
+            ) / 2
+            features["expr_cheek_squint"] = (
+                bs_map.get("cheekSquintLeft", 0) + bs_map.get("cheekSquintRight", 0)
+            ) / 2
+            features["expr_eye_squint"] = (
+                bs_map.get("eyeSquintLeft", 0) + bs_map.get("eyeSquintRight", 0)
+            ) / 2
+            features["expr_eye_wide"] = (
+                bs_map.get("eyeWideLeft", 0) + bs_map.get("eyeWideRight", 0)
+            ) / 2
             features["expr_mouth_pucker"] = bs_map.get("mouthPucker", 0)
         else:
-            for k in ["expr_smile", "expr_frown", "expr_jaw_open", "expr_brow_up",
-                       "expr_brow_down", "expr_cheek_squint", "expr_eye_squint",
-                       "expr_eye_wide", "expr_mouth_pucker"]:
+            for k in [
+                "expr_smile",
+                "expr_frown",
+                "expr_jaw_open",
+                "expr_brow_up",
+                "expr_brow_down",
+                "expr_cheek_squint",
+                "expr_eye_squint",
+                "expr_eye_wide",
+                "expr_mouth_pucker",
+            ]:
                 features[k] = 0.0
 
         row = {
@@ -754,7 +802,9 @@ def main():
         print(f"  {ds}: mean={raw.mean():.2f}, std={raw.std():.2f}, n={mask.sum()}")
         df.loc[mask, "score"] = (raw - raw.mean()) / raw.std()
 
-    print(f"  Combined normalized: mean={df['score'].mean():.3f}, std={df['score'].std():.3f}")
+    print(
+        f"  Combined normalized: mean={df['score'].mean():.3f}, std={df['score'].std():.3f}"
+    )
 
     df.to_csv(OUTPUT_CSV, index=False)
 
@@ -764,7 +814,9 @@ def main():
     print(f"  Skipped no face: {skipped_no_face}")
     print(f"  Debug overlays:  {debug_saved} saved to {DEBUG_DIR}")
     print(f"  Output CSV:      {OUTPUT_CSV}")
-    print(f"  Features:        {len([c for c in df.columns if c not in ['image_path','gender','ethnicity','score','split']])}")
+    print(
+        f"  Features:        {len([c for c in df.columns if c not in ['image_path', 'gender', 'ethnicity', 'score', 'split']])}"
+    )
 
 
 if __name__ == "__main__":
