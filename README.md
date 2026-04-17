@@ -6,17 +6,8 @@ We extract 42 geometric beauty markers from facial landmarks (MediaPipe Face Mes
 
 ## Datasets
 
-Download and place these in the `code/` directory:
-
 1. **MEBeauty** — [GitHub](https://github.com/fbplab/MEBeauty-database) — 2,550 multi-ethnic faces rated by ~300 raters (1-10 scale)
-   ```
-   code/MEBeauty-database-main/
-   ```
-
 2. **SCUT-FBP5500** — [GitHub](https://github.com/HCIILAB/SCUT-FBP5500-Database-Release) — 5,500 faces rated by 60 raters (1-5 scale)
-   ```
-   code/SCUT-FBP5500_v2/
-   ```
 
 Scores are z-normalized per dataset so they can be combined.
 
@@ -26,11 +17,14 @@ Scores are z-normalized per dataset so they can be combined.
 cd code
 uv sync
 
+# 0. Download datasets (pinned to specific commits)
+uv run scripts/prepare.py
+
 # 1. Extract features (MediaPipe landmarks -> beauty markers + expression)
-uv run python scripts/process.py
+uv run scripts/process.py
 
 # 2. Train XGBoost and evaluate
-uv run python scripts/train.py
+uv run scripts/train.py
 ```
 
 ## Results
