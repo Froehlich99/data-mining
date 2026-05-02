@@ -22,8 +22,9 @@ from tqdm import tqdm
 # Paths
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MEBEAUTY_ROOT = PROJECT_ROOT / "MEBeauty-database-main"
-SCUT_ROOT = PROJECT_ROOT / "SCUT-FBP5500_v2"
+MEBEAUTY_ROOT = PROJECT_ROOT / "datasets" / "MEBeauty-database-main"
+SCUT_ROOT = PROJECT_ROOT / "datasets" / "SCUT-FBP5500_v2"
+LIVEBEAUTY_ROOT = PROJECT_ROOT / "datasets" / "LiveBeauty_public"
 OUTPUT_CSV = PROJECT_ROOT / "data" / "features.csv"
 DEBUG_DIR = PROJECT_ROOT / "data" / "debug"
 MODEL_PATH = PROJECT_ROOT / "data" / "face_landmarker_v2_with_blendshapes.task"
@@ -666,18 +667,36 @@ def load_scut():
     return entries
 
 
+def load_livebeauty():
+    """Load LiveBeauty entries. Uses their train/test split."""
+    img_dir = LIVEBEAUTY_ROOT / "cropped_faces"
+    meta_dir = LIVEBEAUTY_ROOT / "meta_file"
+    entries = []
+
+    for split, filename in [("train", "train.csv"), ("test", "test.csv")]:
+        df = pd.read_csv(meta_dir / filename)
+        for _, row in df.iterrows():
+            img_path = img_dir / row["img"]
+            score = float(row["clean_mean_score"])
+            entries.append((str(img_path), score, split, "livebeauty", "unknown", "asian"))
+
+    return entries
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    # Load both datasets
+    # Load all datasets
     mebeauty_entries = load_mebeauty()
     scut_entries = load_scut()
-    all_entries = mebeauty_entries + scut_entries
+    livebeauty_entries = load_livebeauty()
+    all_entries = mebeauty_entries + scut_entries + livebeauty_entries
 
-    print(f"MEBeauty entries: {len(mebeauty_entries)}")
-    print(f"SCUT entries:     {len(scut_entries)}")
-    print(f"Total entries:    {len(all_entries)}")
+    print(f"MEBeauty entries:   {len(mebeauty_entries)}")
+    print(f"SCUT entries:       {len(scut_entries)}")
+    print(f"LiveBeauty entries: {len(livebeauty_entries)}")
+    print(f"Total entries:      {len(all_entries)}")
 
     debug_indices = set(
         random.sample(range(len(all_entries)), min(NUM_DEBUG_IMAGES, len(all_entries)))
@@ -772,7 +791,7 @@ def main():
                 features[k] = 0.0
 
         row = {
-            "image_path": str(img_path),
+            "image_path": str(img_path.relative_to(PROJECT_ROOT)),
             "dataset": dataset,
             "gender": gender,
             "ethnicity": ethnicity,

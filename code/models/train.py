@@ -68,7 +68,7 @@ def load_data():
 def dataset_stats(df: pd.DataFrame) -> dict:
     """Compute per-dataset mean/std for z-score reconversion."""
     stats = {}
-    for ds in ["mebeauty", "scut"]:
+    for ds in df["dataset"].unique():
         sub = df.loc[df["dataset"] == ds, "score_raw"]
         stats[ds] = {"mean": float(sub.mean()), "std": float(sub.std())}
     return stats
