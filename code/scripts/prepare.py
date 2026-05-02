@@ -8,6 +8,7 @@ from pathlib import Path
 import gdown
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATASETS_DIR = PROJECT_ROOT / "datasets"
 
 # MEBeauty — git clone pinned to a specific commit
 MEBEAUTY_REPO = "https://github.com/fbplab/MEBeauty-database.git"
@@ -26,11 +27,12 @@ MEDIAPIPE_MODEL_PATH = (
 
 
 def download_mebeauty():
-    dest = PROJECT_ROOT / MEBEAUTY_DIR
+    dest = DATASETS_DIR / MEBEAUTY_DIR
     if dest.exists():
         print(f"Skipping {MEBEAUTY_DIR} (already exists)")
         return
 
+    DATASETS_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Cloning {MEBEAUTY_DIR} ...")
     subprocess.run(
         ["git", "clone", "--single-branch", MEBEAUTY_REPO, str(dest)],
@@ -44,22 +46,23 @@ def download_mebeauty():
 
 
 def download_scut():
-    dest = PROJECT_ROOT / SCUT_DIR
+    dest = DATASETS_DIR / SCUT_DIR
     if dest.exists():
         print(f"Skipping {SCUT_DIR} (already exists)")
         return
 
-    zip_path = PROJECT_ROOT / "scut-fbp5500.zip"
+    DATASETS_DIR.mkdir(parents=True, exist_ok=True)
+    zip_path = DATASETS_DIR / "scut-fbp5500.zip"
     print(f"Downloading {SCUT_DIR} from Google Drive ...")
     gdown.download(id=SCUT_GDRIVE_ID, output=str(zip_path), quiet=False)
 
     print("Extracting ...")
     with zipfile.ZipFile(zip_path) as zf:
-        zf.extractall(PROJECT_ROOT)
+        zf.extractall(DATASETS_DIR)
 
     # The zip may extract to a differently-named folder — rename if needed
     extracted = None
-    for candidate in PROJECT_ROOT.iterdir():
+    for candidate in DATASETS_DIR.iterdir():
         if (
             candidate.is_dir()
             and "SCUT-FBP5500" in candidate.name

@@ -9,14 +9,22 @@ __pycache__/
 # uv
 uv.lock
 
-# Datasets (download separately, see README.md)
-code/MEBeauty-database-main/
-code/SCUT-FBP5500_v2/
+# Raw datasets (download separately, see README.md)
+code/datasets/MEBeauty-database-main/
+code/datasets/SCUT-FBP5500_v2/
+code/datasets/LiveBeauty_public/
 
 # MediaPipe model binary (large, downloaded by process.py setup)
 code/data/face_landmarker_v2_with_blendshapes.task
 
-code/models/xgboost/artifacts/metadata.json
+# Model artifacts (retrain with scripts/train.py)
+code/models/*/artifacts/
+
+# CatBoost training logs
+code/catboost_info/
+
+# Analysis outputs (regenerate with scripts/analyze_fairness.py)
+code/data/fairness_results/
 
 # LaTeX build artifacts
 docs/*.aux
