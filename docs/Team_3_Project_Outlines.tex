@@ -15,6 +15,8 @@
 \usepackage{csquotes}
 \renewcommand{\algorithmiccomment}[1]{\hfill\textit{// #1}}
 \usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{soul}
+\sethlcolor{yellow}
 \usepackage[colorlinks,citecolor=Green]{hyperref}
 \usepackage{enumitem}
 \setlist[itemize]{noitemsep, topsep=2pt}
@@ -63,7 +65,7 @@
 
 Automated systems for rating or ranking human faces are increasingly used in applications ranging from online platforms to hiring tools. Unlike many computer vision tasks, facial attractiveness prediction is inherently subjective and culturally shaped, which makes it particularly prone to encoding demographic bias. Models trained on data from a narrow set of ethnic groups may learn cultural beauty standards rather than broadly applicable visual patterns, raising both methodological and ethical concerns. We study this problem as a supervised regression task, where the goal is to predict the mean attractiveness rating assigned by human annotators to a given face image.
 
-Our core research questions are: (1) Does a model trained on SCUT-FBP5500 \cite{liang2018scut} (predominantly Asian/Caucasian) perform significantly worse on MEBeauty \cite{lebedeva2021mebeauty}, which includes Asian, Black, Caucasian, Hispanic, Indian, and Middle Eastern subjects? (2) Does training on the more diverse MEBeauty dataset reduce racial disparities in prediction accuracy? (3) How much predictive performance and fairness can be achieved with ArcFace \cite{deng2019arcface} representations combined with supervised models, and how do these results compare with published deep-learning approaches?
+Our core research questions are: (1) Does a model trained on SCUT-FBP5500 \cite{liang2018scut} (predominantly Asian/Caucasian) perform significantly worse on MEBeauty \cite{lebedeva2021mebeauty}, which includes Asian, Black, Caucasian, Hispanic, Indian, and Middle Eastern subjects? (2) Does training on the more diverse MEBeauty dataset reduce racial disparities in prediction accuracy? (3) \hl{How much predictive performance and fairness can be achieved with interpretable geometric features extracted from facial landmarks, and which specific facial measurements (e.g., eye spacing, nose proportions, facial symmetry) show the strongest correlation with attractiveness ratings across different ethnic groups?}
 
 \chapter{Data Acquisition}
 \label{ch:data}
@@ -79,24 +81,25 @@ For cross-dataset evaluation, we treat the two datasets as separate corpora: mod
 
 \begin{itemize}
     \item \textbf{Face Detection \& Alignment:} Standard face detection crops and aligns all images to a consistent resolution across both datasets.
-    \item \textbf{Feature Extraction:} 512-dimensional ArcFace \cite{deng2019arcface} embeddings encode facial geometry and texture, serving as the input feature space for all proposed prediction models.
-    \item \textbf{Normalization:} Rating scores normalized to $[0,1]$; ArcFace vectors $\ell_2$-normalized.
+    \item \hl{\textbf{Feature Extraction:} Interpretable tabular features computed from MediaPipe facial landmarks serve as the primary input representation. The current feature set includes geometric measurements like interpupillary ratio, eye spacing ratio or mouth-to-chin ratio}
+    \hl{Additional geometric features may be engineered based on initial model performance and feature importance analysis.} 
+    \item \textbf{Normalization:} Rating scores may be rescaled or standardized depending on the modeling approach (e.g., z-score standardization to zero mean and unit variance); tabular geometric features standardized using z-scores.
     \item \textbf{Outlier Handling:} Images with high annotator variance (std~$> 1.0$) flagged; we experiment with their removal.
 \end{itemize}
 
 \section{Proposed Algorithms}
 
-\noindent\textbf{Baseline:} Global mean predictor; Linear Regression on ArcFace embeddings; Ridge Regression ($\alpha \in \{0.01, 0.1, 1, 10, 100\}$ tuned via cross-validation).
+\noindent\textbf{Baseline:} Global mean predictor; Linear Regression on \hl{tabular geometric features}; Ridge Regression ($\alpha \in \{0.01, 0.1, 1, 10, 100\}$ tuned via cross-validation).
 
-\noindent\textbf{Symbolic:} Decision Tree Regressor (max depth $\in \{3,5,7,10\}$, min samples leaf $\in \{5,10,20\}$) --- enables inspection of which embedding dimensions drive predictions.
+\noindent\textbf{Symbolic:} Decision Tree Regressor (max depth $\in \{3,5,7,10\}$, min samples leaf $\in \{5,10,20\}$) --- enables inspection of which geometric features drive predictions and identification of interpretable decision rules.
 
-\noindent\textbf{Ensemble:} Random Forest Regressor ($n\_estimators \in \{100,200,500\}$, max features $\in \{\text{sqrt}, \log_2\}$) with feature importance analysis.
+\noindent\textbf{Ensemble:} Random Forest Regressor ($n\_estimators \in \{100,200,500\}$, max features $\in \{\text{sqrt}, \log_2\}$) with feature importance analysis to identify which facial measurements are most predictive of attractiveness across different ethnic groups.
 
-\noindent\textbf{Boosting:} XGBoost Regressor with tuned tree depth, learning rate, and number of estimators to capture nonlinear interactions in the ArcFace embedding space while often outperforming a single tree or bagged ensemble on tabular features.
+\noindent\textbf{Boosting:} XGBoost Regressor with tuned tree depth, learning rate, and number of estimators to capture nonlinear interactions between geometric features while often outperforming a single tree or bagged ensemble on \hl{tabular data}.
 
-\noindent\textbf{Neural Baseline:} A small multilayer perceptron on top of ArcFace embeddings, trained with Adam ($lr \in \{10^{-4}, 10^{-5}\}$), batch size 32, up to 30 epochs with early stopping on validation MSE.
+\noindent\textbf{Neural Baseline:} A small multilayer perceptron trained on tabular features with Adam ($lr \in \{10^{-4}, 10^{-5}\}$), batch size 32, up to 30 epochs with early stopping on validation MSE.
 
-Within each dataset, hyperparameters are tuned via stratified 5-fold cross-validation and final evaluation uses an 80/20 stratified train/test split. For cross-dataset evaluation, models are trained on one dataset and tested directly on the other.
+Within each dataset, hyperparameters are tuned via stratified 5-fold cross-validation and final evaluation uses an 80/20 stratified train/test split. For cross-dataset evaluation, models are trained on one dataset and tested directly on the other. Feature importance analysis will guide potential expansion of the geometric feature set.
 
 \chapter{Evaluation and Expected Results}
 \label{ch:evaluation}
@@ -107,13 +110,13 @@ Within each dataset, hyperparameters are tuned via stratified 5-fold cross-valid
 
 \noindent\textbf{Generalization:} Train on SCUT, test on MEBeauty (and vice versa). The performance drop quantifies cross-ethnic generalization failure.
 
-\noindent\textbf{Fairness / Bias:} Per-ethnicity RMSE computed within MEBeauty for each model. Disparity summarized via the worst-group versus best-group RMSE gap and ratio, where smaller gaps and ratios closer to 1 indicate fairer performance.
+\noindent\textbf{Fairness / Bias:} Fairness is operationalized as consistency of predictive performance across demographic groups. We compute per-ethnicity RMSE within MEBeauty for each model and summarize disparity using: (1) the absolute gap between worst-group and best-group RMSE, (2) the ratio of worst-to-best RMSE (values closer to 1 indicate fairer performance), and (3) the standard deviation of per-group RMSEs. These metrics quantify whether the model systematically underperforms for specific ethnic groups, which would indicate learned bias toward certain demographic features or beauty standards.
 
 \noindent\textbf{State-of-the-art comparison:} Results benchmarked against published baselines for SCUT-FBP5500 (prior CNN approaches achieve PCC~$\approx 0.90$) and related literature using end-to-end CNN or transformer architectures. These serve as external comparison points rather than models we necessarily reimplement.
 
 \section{Expected Outcomes}
 
-We expect ArcFace-based models to provide a strong and computationally feasible benchmark, while still showing notable cross-dataset performance drops when training on SCUT and testing on MEBeauty. We anticipate higher errors for underrepresented groups (Black, Hispanic, Middle Eastern) in SCUT-trained models and partial mitigation when training on MEBeauty. Decision Tree analysis will expose which embedding dimensions are most culturally biased, and comparison with published CNN/transformer results will help position the performance of our simpler pipeline.
+We expect tabular geometric features to provide interpretable and computationally efficient predictions, while showing notable cross-dataset performance drops when training on SCUT and testing on MEBeauty. We anticipate higher errors for underrepresented groups (Black, Hispanic, Middle Eastern) in SCUT-trained models and partial mitigation when training on MEBeauty. \hl{Feature importance analysis from tree-based models will reveal which specific geometric measurements (e.g., eye ratios, facial symmetry, proportions) are most predictive and whether these patterns differ across ethnic groups, exposing potential sources of cultural bias. Comparison with published CNN/transformer results will help position the performance-interpretability tradeoff of our tabular feature approach.}
 
 \bibliography{refs}
 
