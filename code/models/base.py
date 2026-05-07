@@ -9,7 +9,7 @@ import numpy as np
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 
-FEATURE_COLS = [
+GEOMETRY_FEATURE_COLS = [
     # Eyes
     "canthal_tilt",
     "eye_width_ratio",
@@ -46,6 +46,25 @@ FEATURE_COLS = [
     "phi_deviation",
     "facial_thirds_symmetry",
 ]
+
+EXPRESSION_FEATURE_COLS = [
+    "expr_smile",
+    "expr_frown",
+    "expr_jaw_open",
+    "expr_brow_up",
+    "expr_brow_down",
+    "expr_cheek_squint",
+    "expr_eye_squint",
+    "expr_eye_wide",
+    "expr_mouth_pucker",
+]
+
+FEATURE_GROUPS = {
+    "geometry": GEOMETRY_FEATURE_COLS,
+    "expression": EXPRESSION_FEATURE_COLS,
+}
+
+FEATURE_COLS = GEOMETRY_FEATURE_COLS + EXPRESSION_FEATURE_COLS
 
 
 def augment_features(

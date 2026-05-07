@@ -2,18 +2,22 @@
 Analyze XGBoost prediction distribution to check for regression-to-the-mean.
 """
 
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 from scipy import stats
 
-FEATURES_CSV = "data/features.csv"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from models.base import FEATURE_COLS
 
-EXCLUDED_COLS = {"image_path", "dataset", "gender", "ethnicity", "score", "score_raw", "split", "head_roll"}
+FEATURES_CSV = "data/features.csv"
 
 def main():
     df = pd.read_csv(FEATURES_CSV)
-    feature_cols = [c for c in df.columns if c not in EXCLUDED_COLS]
+    feature_cols = FEATURE_COLS
 
     train_df = df[df["split"] == "train"]
     val_df = df[df["split"] == "val"]
