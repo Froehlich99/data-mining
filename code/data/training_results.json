@@ -1,0 +1,552 @@
+{
+  "ridge": {
+    "cv_mean": {
+      "mae": 0.6036,
+      "rmse": 0.7676,
+      "pearson_r": 0.6375
+    },
+    "cv_std": {
+      "mae": 0.0068,
+      "rmse": 0.0051,
+      "pearson_r": 0.0121
+    },
+    "holdout": {
+      "mae": 0.6004,
+      "rmse": 0.7625,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 30.0,
+      "pearson_r": 0.6598,
+      "std_ratio": 0.6317,
+      "mae_bottom_quartile": 0.7329,
+      "mae_top_quartile": 0.8069,
+      "mae_middle": 0.4599,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5872,
+          "pearson_r": 0.6851,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.5819,
+          "pearson_r": 0.5919,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.6158,
+          "pearson_r": 0.5683,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.7624,
+          "pearson_r": 0.513,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.038,
+          "pearson_r": 0.3258,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.7427,
+          "pearson_r": 0.6003,
+          "n": 58
+        }
+      }
+    }
+  },
+  "decision_tree": {
+    "cv_mean": {
+      "mae": 0.6654,
+      "rmse": 0.8515,
+      "pearson_r": 0.529
+    },
+    "cv_std": {
+      "mae": 0.0043,
+      "rmse": 0.0073,
+      "pearson_r": 0.0072
+    },
+    "holdout": {
+      "mae": 0.6633,
+      "rmse": 0.8518,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 22.7,
+      "pearson_r": 0.5463,
+      "std_ratio": 0.6095,
+      "mae_bottom_quartile": 0.8442,
+      "mae_top_quartile": 0.8814,
+      "mae_middle": 0.4961,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.6482,
+          "pearson_r": 0.5737,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.6885,
+          "pearson_r": 0.3282,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.6803,
+          "pearson_r": 0.4402,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.7936,
+          "pearson_r": 0.3881,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.2417,
+          "pearson_r": -0.0291,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.7979,
+          "pearson_r": 0.4597,
+          "n": 58
+        }
+      }
+    }
+  },
+  "random_forest": {
+    "cv_mean": {
+      "mae": 0.6125,
+      "rmse": 0.7768,
+      "pearson_r": 0.6409
+    },
+    "cv_std": {
+      "mae": 0.0045,
+      "rmse": 0.0063,
+      "pearson_r": 0.0095
+    },
+    "holdout": {
+      "mae": 0.6197,
+      "rmse": 0.7807,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 27.8,
+      "pearson_r": 0.657,
+      "std_ratio": 0.5009,
+      "mae_bottom_quartile": 0.8224,
+      "mae_top_quartile": 0.8747,
+      "mae_middle": 0.4283,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.6081,
+          "pearson_r": 0.6771,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.7092,
+          "pearson_r": 0.3943,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.6085,
+          "pearson_r": 0.5964,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.7777,
+          "pearson_r": 0.5306,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.1259,
+          "pearson_r": 0.2253,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.7667,
+          "pearson_r": 0.5883,
+          "n": 58
+        }
+      }
+    }
+  },
+  "xgboost": {
+    "cv_mean": {
+      "mae": 0.5632,
+      "rmse": 0.7273,
+      "pearson_r": 0.6836
+    },
+    "cv_std": {
+      "mae": 0.0088,
+      "rmse": 0.0095,
+      "pearson_r": 0.0078
+    },
+    "holdout": {
+      "mae": 0.554,
+      "rmse": 0.7169,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 35.4,
+      "pearson_r": 0.708,
+      "std_ratio": 0.6769,
+      "mae_bottom_quartile": 0.6835,
+      "mae_top_quartile": 0.6979,
+      "mae_middle": 0.439,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5383,
+          "pearson_r": 0.7316,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.5994,
+          "pearson_r": 0.5095,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.5732,
+          "pearson_r": 0.6221,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.6404,
+          "pearson_r": 0.6711,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.1483,
+          "pearson_r": 0.1822,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.7112,
+          "pearson_r": 0.5841,
+          "n": 58
+        }
+      }
+    }
+  },
+  "lightgbm": {
+    "cv_mean": {
+      "mae": 0.5652,
+      "rmse": 0.7292,
+      "pearson_r": 0.6815
+    },
+    "cv_std": {
+      "mae": 0.0078,
+      "rmse": 0.008,
+      "pearson_r": 0.0076
+    },
+    "holdout": {
+      "mae": 0.5564,
+      "rmse": 0.7199,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 35.2,
+      "pearson_r": 0.7045,
+      "std_ratio": 0.6918,
+      "mae_bottom_quartile": 0.6829,
+      "mae_top_quartile": 0.694,
+      "mae_middle": 0.4453,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5397,
+          "pearson_r": 0.7303,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.5779,
+          "pearson_r": 0.5161,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.578,
+          "pearson_r": 0.6136,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.6768,
+          "pearson_r": 0.614,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.1648,
+          "pearson_r": 0.1069,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.7306,
+          "pearson_r": 0.5734,
+          "n": 58
+        }
+      }
+    }
+  },
+  "catboost": {
+    "cv_mean": {
+      "mae": 0.5621,
+      "rmse": 0.7236,
+      "pearson_r": 0.6877
+    },
+    "cv_std": {
+      "mae": 0.0076,
+      "rmse": 0.0066,
+      "pearson_r": 0.0066
+    },
+    "holdout": {
+      "mae": 0.5555,
+      "rmse": 0.7156,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 35.3,
+      "pearson_r": 0.7092,
+      "std_ratio": 0.6795,
+      "mae_bottom_quartile": 0.6919,
+      "mae_top_quartile": 0.6984,
+      "mae_middle": 0.4378,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5408,
+          "pearson_r": 0.7328,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.5949,
+          "pearson_r": 0.4805,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.5704,
+          "pearson_r": 0.63,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.6874,
+          "pearson_r": 0.6269,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.1222,
+          "pearson_r": 0.2023,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.6796,
+          "pearson_r": 0.5999,
+          "n": 58
+        }
+      }
+    }
+  },
+  "ensemble": {
+    "cv_mean": {
+      "mae": 0.559,
+      "rmse": 0.7204,
+      "pearson_r": 0.6908
+    },
+    "cv_std": {
+      "mae": 0.0084,
+      "rmse": 0.0064,
+      "pearson_r": 0.0094
+    },
+    "holdout": {
+      "mae": 0.5543,
+      "rmse": 0.7148,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 35.4,
+      "pearson_r": 0.7098,
+      "std_ratio": 0.6824,
+      "mae_bottom_quartile": 0.6767,
+      "mae_top_quartile": 0.7018,
+      "mae_middle": 0.4412,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5392,
+          "pearson_r": 0.7319,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.5619,
+          "pearson_r": 0.5343,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.5752,
+          "pearson_r": 0.624,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.7062,
+          "pearson_r": 0.6188,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.0876,
+          "pearson_r": 0.2654,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.674,
+          "pearson_r": 0.6371,
+          "n": 58
+        }
+      }
+    }
+  },
+  "mlp": {
+    "cv_mean": {
+      "mae": 0.5507,
+      "rmse": 0.7143,
+      "pearson_r": 0.7001
+    },
+    "cv_std": {
+      "mae": 0.0113,
+      "rmse": 0.0081,
+      "pearson_r": 0.0085
+    },
+    "holdout": {
+      "mae": 0.5438,
+      "rmse": 0.7106,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 36.6,
+      "pearson_r": 0.7143,
+      "std_ratio": 0.7357,
+      "mae_bottom_quartile": 0.6632,
+      "mae_top_quartile": 0.6274,
+      "mae_middle": 0.4568,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5217,
+          "pearson_r": 0.7425,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.5842,
+          "pearson_r": 0.5807,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.5979,
+          "pearson_r": 0.5932,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.7333,
+          "pearson_r": 0.4995,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.0273,
+          "pearson_r": 0.3072,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.6844,
+          "pearson_r": 0.6444,
+          "n": 58
+        }
+      }
+    }
+  },
+  "quantile": {
+    "cv_mean": {
+      "mae": 0.5664,
+      "rmse": 0.7378,
+      "pearson_r": 0.6725
+    },
+    "cv_std": {
+      "mae": 0.0052,
+      "rmse": 0.0067,
+      "pearson_r": 0.0074
+    },
+    "holdout": {
+      "mae": 0.5602,
+      "rmse": 0.729,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 34.7,
+      "pearson_r": 0.6959,
+      "std_ratio": 0.6654,
+      "mae_bottom_quartile": 0.6955,
+      "mae_top_quartile": 0.7,
+      "mae_middle": 0.4442,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5456,
+          "pearson_r": 0.7173,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.5809,
+          "pearson_r": 0.4795,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.5747,
+          "pearson_r": 0.6249,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.6368,
+          "pearson_r": 0.6978,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.1872,
+          "pearson_r": 0.1365,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.7242,
+          "pearson_r": 0.5754,
+          "n": 58
+        }
+      }
+    }
+  },
+  "ranker": {
+    "cv_mean": {
+      "mae": 0.5609,
+      "rmse": 0.7307,
+      "pearson_r": 0.6806
+    },
+    "cv_std": {
+      "mae": 0.0102,
+      "rmse": 0.0103,
+      "pearson_r": 0.0108
+    },
+    "holdout": {
+      "mae": 0.557,
+      "rmse": 0.7246,
+      "baseline_mae": 0.8582,
+      "improvement_pct": 35.1,
+      "pearson_r": 0.7019,
+      "std_ratio": 0.646,
+      "mae_bottom_quartile": 0.7008,
+      "mae_top_quartile": 0.7137,
+      "mae_middle": 0.4305,
+      "per_ethnicity": {
+        "asian": {
+          "mae": 0.5406,
+          "pearson_r": 0.7248,
+          "n": 2871
+        },
+        "black": {
+          "mae": 0.6096,
+          "pearson_r": 0.4879,
+          "n": 59
+        },
+        "caucasian": {
+          "mae": 0.5731,
+          "pearson_r": 0.6266,
+          "n": 496
+        },
+        "hispanic": {
+          "mae": 0.6908,
+          "pearson_r": 0.6527,
+          "n": 59
+        },
+        "indian": {
+          "mae": 1.1487,
+          "pearson_r": 0.1759,
+          "n": 31
+        },
+        "mideastern": {
+          "mae": 0.7239,
+          "pearson_r": 0.6017,
+          "n": 58
+        }
+      }
+    }
+  }
+}

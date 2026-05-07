@@ -30,7 +30,16 @@
     "midface_ratio",
     "lower_face_ratio",
     "phi_deviation",
-    "facial_thirds_symmetry"
+    "facial_thirds_symmetry",
+    "expr_smile",
+    "expr_frown",
+    "expr_jaw_open",
+    "expr_brow_up",
+    "expr_brow_down",
+    "expr_cheek_squint",
+    "expr_eye_squint",
+    "expr_eye_wide",
+    "expr_mouth_pucker"
   ],
   "dataset_stats": {
     "mebeauty": {
@@ -40,18 +49,22 @@
     "scut": {
       "mean": 2.9908909116363636,
       "std": 0.6881115155620254
+    },
+    "livebeauty": {
+      "mean": 3.4826518145098793,
+      "std": 0.5733286587802711
     }
   },
   "metrics": {
-    "mae": 0.5592,
-    "rmse": 0.7006,
-    "baseline_mae": 0.7943,
-    "improvement_pct": 29.6,
-    "pearson_r": 0.6781,
-    "std_ratio": 0.6823,
-    "mae_bottom_quartile": 0.6153,
-    "mae_top_quartile": 0.7421,
-    "mae_middle": 0.4399
+    "mae": 0.5531,
+    "rmse": 0.7136,
+    "baseline_mae": 0.8456,
+    "improvement_pct": 34.6,
+    "pearson_r": 0.7018,
+    "std_ratio": 0.6776,
+    "mae_bottom_quartile": 0.764,
+    "mae_top_quartile": 0.6719,
+    "mae_middle": 0.4452
   },
   "params": {
     "iterations": 1000,
@@ -60,7 +73,7 @@
     "subsample": 0.8,
     "early_stopping_rounds": 50
   },
-  "std_ratio": 0.6823437938136404,
-  "trained_at": "2026-04-17T04:38:10.315917+00:00",
-  "n_features": 30
+  "std_ratio": 0.677583279548888,
+  "trained_at": "2026-05-07T09:03:44.031802+00:00",
+  "n_features": 39
 }
