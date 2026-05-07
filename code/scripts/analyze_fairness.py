@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
-from sklearn.model_selection import KFold, train_test_split
+from sklearn.model_selection import StratifiedKFold, train_test_split
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from models.base import FEATURE_COLS
@@ -107,11 +107,12 @@ def combined_cv_baseline(df: pd.DataFrame, model_name: str) -> tuple[dict, np.nd
     ds_stats = dataset_stats(df)
     X = df[FEATURE_COLS].values
     y = df["score"].values
+    ethnicity = df["ethnicity"].values
 
-    kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
+    kf = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
     oof_preds = np.full(len(y), np.nan)
 
-    for train_idx, test_idx in kf.split(X):
+    for train_idx, test_idx in kf.split(X, ethnicity):
         X_train_full, X_test = X[train_idx], X[test_idx]
         y_train_full, y_test = y[train_idx], y[test_idx]
 
@@ -126,7 +127,7 @@ def combined_cv_baseline(df: pd.DataFrame, model_name: str) -> tuple[dict, np.nd
         oof_preds[test_idx] = model.predict(X_test)
 
     overall = compute_metrics(y, oof_preds)
-    overall["experiment"] = f"Combined ({N_FOLDS}-fold CV)"
+    overall["experiment"] = f"Combined ({N_FOLDS}-fold stratified CV)"
     overall["train_n"] = len(df)
     overall["test_n"] = len(df)
     return overall, oof_preds
