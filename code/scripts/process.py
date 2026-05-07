@@ -73,8 +73,10 @@ NOSE_RIGHT = 358
 # Lips
 LIP_LEFT = 61
 LIP_RIGHT = 291
-UPPER_LIP_TOP = 13
-UPPER_LIP_BOTTOM = 14
+# Center lip thickness points. 0/17 are outer vermilion points; 13/14 are
+# inner mouth-opening points.
+UPPER_LIP_TOP = 0
+UPPER_LIP_BOTTOM = 13
 LOWER_LIP_TOP = 14
 LOWER_LIP_BOTTOM = 17
 CUPID_BOW_LEFT = 82
@@ -206,6 +208,7 @@ def compute_features(landmarks, w, h):
     lip_right = lm_xy(lm, LIP_RIGHT, w, h)
     upper_lip_top = lm_xy(lm, UPPER_LIP_TOP, w, h)
     upper_lip_bot = lm_xy(lm, UPPER_LIP_BOTTOM, w, h)
+    lower_lip_top = lm_xy(lm, LOWER_LIP_TOP, w, h)
     lower_lip_bot = lm_xy(lm, LOWER_LIP_BOTTOM, w, h)
 
     # Jaw points
@@ -221,16 +224,18 @@ def compute_features(landmarks, w, h):
     # ======================================================================
 
     # --- Canthal tilt (head-roll corrected) ---
-    def eye_tilt(outer, inner):
-        dx = inner[0] - outer[0]
-        dy = inner[1] - outer[1]
-        if dx < 0:
-            dx, dy = -dx, -dy
-        return math.degrees(math.atan2(-dy, dx))
-
-    l_canthal_raw = eye_tilt(l_outer, l_inner)
-    r_canthal_raw = eye_tilt(r_outer, r_inner)
-    canthal_tilt = ((l_canthal_raw - head_roll) + (r_canthal_raw - head_roll)) / 2
+    # Positive = lateral (outer) canthus higher than medial (inner) canthus.
+    # Both eye fissures measured left-to-right (same direction as head_roll),
+    # then subtract head_roll to isolate tilt from head rotation.
+    l_fissure_angle = angle_deg(l_outer, l_inner)   # left-to-right
+    r_fissure_angle = angle_deg(r_inner, r_outer)   # left-to-right
+    l_tilt = l_fissure_angle - head_roll
+    r_tilt = r_fissure_angle - head_roll
+    # In pixel coords (y-down): if outer is higher than inner, the left eye's
+    # outer→inner vector tilts downward (positive angle), and the right eye's
+    # inner→outer vector tilts upward (negative angle).
+    # Positive canthal tilt: l_tilt > 0 and r_tilt < 0.
+    canthal_tilt = (l_tilt - r_tilt) / 2
 
     # --- Eye ratios ---
     eye_width_ratio = avg_eye_w / face_width
@@ -249,7 +254,7 @@ def compute_features(landmarks, w, h):
     lip_width = dist(lip_left, lip_right)
     lip_width_ratio = lip_width / face_width
     upper_lip_h = dist(upper_lip_top, upper_lip_bot)
-    lower_lip_h = dist(upper_lip_bot, lower_lip_bot)
+    lower_lip_h = dist(lower_lip_top, lower_lip_bot)
     upper_lip_ratio = upper_lip_h / lower_lip_h if lower_lip_h > 0 else 0
 
     # --- Facial symmetry (aggregate) ---
@@ -293,21 +298,25 @@ def compute_features(landmarks, w, h):
 
     # --- Eye spacing (rule of fifths: intercanthal = 1 eye width) ---
     intercanthal = dist(l_inner, r_inner)
-    eye_spacing_ratio = intercanthal / face_width
+    eye_spacing_ratio = intercanthal / avg_eye_w if avg_eye_w > 0 else 0
 
     # --- Eye area ratio (ellipse approximation: pi * a * b) ---
     l_eye_area = math.pi * (l_eye_w / 2) * (l_eye_h / 2)
     r_eye_area = math.pi * (r_eye_w / 2) * (r_eye_h / 2)
     eye_area_ratio = ((l_eye_area + r_eye_area) / 2) / face_area
 
-    # --- Scleral show (iris bottom to lower eyelid gap / eye height) ---
+    # --- Scleral show (white below iris / eye height) ---
     try:
         l_iris_bot = lm_xy(lm, L_IRIS_BOTTOM, w, h)
         r_iris_bot = lm_xy(lm, R_IRIS_BOTTOM, w, h)
-        # Positive = white showing below iris (bad), negative = iris overlaps lid
-        l_scleral = (l_eye_bot[1] - l_iris_bot[1]) / l_eye_h if l_eye_h > 0 else 0
-        r_scleral = (r_eye_bot[1] - r_iris_bot[1]) / r_eye_h if r_eye_h > 0 else 0
-        scleral_show = (l_scleral + r_scleral) / 2
+        # Positive = sclera visible below iris (lid lower than iris bottom).
+        # Negative (normal) = iris partially hidden by lower lid.
+        min_eye_h = face_height * 0.02
+        l_h = max(l_eye_h, min_eye_h)
+        r_h = max(r_eye_h, min_eye_h)
+        l_scleral = (l_eye_bot[1] - l_iris_bot[1]) / l_h
+        r_scleral = (r_eye_bot[1] - r_iris_bot[1]) / r_h
+        scleral_show = np.clip((l_scleral + r_scleral) / 2, -1.0, 1.0)
     except IndexError:
         scleral_show = 0.0
 
@@ -321,8 +330,8 @@ def compute_features(landmarks, w, h):
     r_brow_arch = abs(r_eye_top[1] - r_brow_top[1])
     brow_arch_height = ((l_brow_arch + r_brow_arch) / 2) / face_height
 
-    # --- Lip fullness (total lip height / face height) ---
-    total_lip_h = dist(upper_lip_top, lower_lip_bot)
+    # --- Lip fullness (vermilion height / face height) ---
+    total_lip_h = upper_lip_h + lower_lip_h
     lip_fullness_ratio = total_lip_h / face_height
 
     # --- Mouth width to interocular distance ratio ---
@@ -603,6 +612,83 @@ def draw_debug_overlay(img, landmarks, w, h, features):
 # ---------------------------------------------------------------------------
 # Dataset loaders
 # ---------------------------------------------------------------------------
+def load_annotator_variance():
+    """Precompute per-image annotator standard deviation for all datasets.
+
+    Returns (variance_map, thresholds) where:
+      - variance_map: dict mapping (dataset, image_filename) -> std value
+      - thresholds: dict mapping dataset -> 90th percentile threshold
+    Flags the top ~10% most disagreed-upon images per dataset as high_variance.
+    """
+    variance_map = {}
+    per_dataset_stds = {}
+
+    # SCUT: long-format xlsx (Rater, Filename, Rating, original Rating)
+    scut_ratings_path = SCUT_ROOT / "All_Ratings.xlsx"
+    if scut_ratings_path.exists():
+        print("  Loading SCUT rater variance...")
+        scut_df = pd.read_excel(scut_ratings_path)
+        std_per_img = scut_df.groupby("Filename")["Rating"].std()
+        scut_stds = []
+        for fname, std_val in std_per_img.items():
+            variance_map[("scut", fname)] = float(std_val)
+            scut_stds.append(float(std_val))
+        per_dataset_stds["scut"] = scut_stds
+
+    # MEBeauty: wide-format xlsx (mean, image, path, rater1, rater2, ...)
+    mebeauty_scores_path = MEBEAUTY_ROOT / "scores" / "generic_scores_all_2022.xlsx"
+    if mebeauty_scores_path.exists():
+        print("  Loading MEBeauty rater variance...")
+        me_df = pd.read_excel(mebeauty_scores_path)
+        rater_cols = me_df.columns[3:]
+        stds = me_df[rater_cols].std(axis=1, skipna=True)
+        me_stds = []
+        for idx, row in me_df.iterrows():
+            std_val = float(stds.iloc[idx])
+            variance_map[("mebeauty", row["image"])] = std_val
+            me_stds.append(std_val)
+        per_dataset_stds["mebeauty"] = me_stds
+
+    # LiveBeauty: proxy from mean_score vs clean_mean_score
+    lb_stds = []
+    meta_dir = LIVEBEAUTY_ROOT / "meta_file"
+    for filename in ["train.csv", "test.csv"]:
+        path = meta_dir / filename
+        if path.exists():
+            df = pd.read_csv(path)
+            for _, row in df.iterrows():
+                proxy = abs(float(row["mean_score"]) - float(row["clean_mean_score"]))
+                variance_map[("livebeauty", row["img"])] = proxy
+                lb_stds.append(proxy)
+    if lb_stds:
+        per_dataset_stds["livebeauty"] = lb_stds
+
+    # Compute per-dataset 90th percentile thresholds
+    import numpy as np
+    thresholds = {}
+    for ds, stds_list in per_dataset_stds.items():
+        thresholds[ds] = float(np.percentile(stds_list, 90))
+
+    print(f"  Variance data for {len(variance_map)} images")
+    print(f"  Thresholds (90th percentile): {{{', '.join(f'{k}: {v:.3f}' for k, v in thresholds.items())}}}")
+    return variance_map, thresholds
+
+
+def get_outlier_flag(dataset, img_filename, variance_map, thresholds):
+    """Return (annotator_std, outlier_flag) for an image."""
+    key = (dataset, img_filename)
+    if key not in variance_map:
+        return float("nan"), "unknown"
+
+    std_val = variance_map[key]
+    threshold = thresholds.get(dataset)
+    if threshold is None or threshold <= 0:
+        return std_val, "unknown"
+
+    flag = "high_variance" if std_val > threshold else "low_variance"
+    return std_val, flag
+
+
 def load_mebeauty():
     """Load MEBeauty entries: (abs_img_path, raw_score, split, dataset, gender, ethnicity)."""
     scores_dir = MEBEAUTY_ROOT / "scores"
@@ -687,6 +773,10 @@ def load_livebeauty():
 # Main
 # ---------------------------------------------------------------------------
 def main():
+    # Load annotator variance data
+    print("Loading annotator variance data...")
+    variance_map, variance_thresholds = load_annotator_variance()
+
     # Load all datasets
     mebeauty_entries = load_mebeauty()
     scut_entries = load_scut()
@@ -790,6 +880,10 @@ def main():
             ]:
                 features[k] = 0.0
 
+        # Annotator variance
+        img_filename = img_path.name
+        annotator_std, outlier_flag = get_outlier_flag(dataset, img_filename, variance_map, variance_thresholds)
+
         row = {
             "image_path": str(img_path.relative_to(PROJECT_ROOT)),
             "dataset": dataset,
@@ -797,6 +891,8 @@ def main():
             "ethnicity": ethnicity,
             "score_raw": score,
             "split": split,
+            "annotator_std": annotator_std,
+            "outlier_flag": outlier_flag,
             **features,
         }
         rows.append(row)
@@ -834,8 +930,14 @@ def main():
     print(f"  Debug overlays:  {debug_saved} saved to {DEBUG_DIR}")
     print(f"  Output CSV:      {OUTPUT_CSV}")
     print(
-        f"  Features:        {len([c for c in df.columns if c not in ['image_path', 'gender', 'ethnicity', 'score', 'split']])}"
+        f"  Features:        {len([c for c in df.columns if c not in ['image_path', 'gender', 'ethnicity', 'score', 'split', 'annotator_std', 'outlier_flag']])}"
     )
+
+    # Outlier flagging summary
+    print(f"\nOutlier flagging:")
+    for flag in ["low_variance", "high_variance", "unknown"]:
+        n = (df["outlier_flag"] == flag).sum()
+        print(f"  {flag}: {n}")
 
 
 if __name__ == "__main__":
