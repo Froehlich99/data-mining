@@ -155,6 +155,18 @@ def compute_head_roll(landmarks, w, h):
     return angle_deg(l_center, r_center)
 
 
+def compute_canthal_tilt(l_outer, l_inner, r_inner, r_outer):
+    """Return signed canthal tilt in degrees.
+
+    Positive means both lateral/outer canthi are higher than the medial/inner
+    canthi. Image coordinates are y-down, so the right eye's left-to-right
+    fissure angle has the opposite sign and must be negated.
+    """
+    l_tilt = angle_deg(l_outer, l_inner)
+    r_tilt = -angle_deg(r_inner, r_outer)
+    return (l_tilt + r_tilt) / 2
+
+
 # ---------------------------------------------------------------------------
 # Feature computation
 # ---------------------------------------------------------------------------
@@ -223,19 +235,9 @@ def compute_features(landmarks, w, h):
     # EXISTING FEATURES (refined)
     # ======================================================================
 
-    # --- Canthal tilt (head-roll corrected) ---
+    # --- Canthal tilt ---
     # Positive = lateral (outer) canthus higher than medial (inner) canthus.
-    # Both eye fissures measured left-to-right (same direction as head_roll),
-    # then subtract head_roll to isolate tilt from head rotation.
-    l_fissure_angle = angle_deg(l_outer, l_inner)   # left-to-right
-    r_fissure_angle = angle_deg(r_inner, r_outer)   # left-to-right
-    l_tilt = l_fissure_angle - head_roll
-    r_tilt = r_fissure_angle - head_roll
-    # In pixel coords (y-down): if outer is higher than inner, the left eye's
-    # outer→inner vector tilts downward (positive angle), and the right eye's
-    # inner→outer vector tilts upward (negative angle).
-    # Positive canthal tilt: l_tilt > 0 and r_tilt < 0.
-    canthal_tilt = (l_tilt - r_tilt) / 2
+    canthal_tilt = compute_canthal_tilt(l_outer, l_inner, r_inner, r_outer)
 
     # --- Eye ratios ---
     eye_width_ratio = avg_eye_w / face_width
