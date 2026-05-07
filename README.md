@@ -1,8 +1,8 @@
-# Facial Attractiveness Prediction from Geometric Beauty Markers
+# Facial Attractiveness Prediction from Facial Features
 
-University data mining project: can facial geometry alone predict how attractive a face is rated?
+University data mining project: can interpretable facial geometry plus expression cues predict how attractive a face is rated?
 
-We extract 30 geometric beauty markers from facial landmarks (MediaPipe Face Mesh), then use XGBoost and other models to predict attractiveness ratings. SHAP analysis reveals which markers actually influence perceived attractiveness. Cross-dataset and fairness analyses test whether predictions generalize across cultures and demographic groups.
+We extract 30 geometric beauty markers and 9 expression markers from MediaPipe Face Mesh, then use XGBoost and other models to predict attractiveness ratings. SHAP analysis reveals which markers actually influence perceived attractiveness. Cross-dataset and fairness analyses test whether predictions generalize across cultures and demographic groups.
 
 ## Datasets
 

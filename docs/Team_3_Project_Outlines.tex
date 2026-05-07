@@ -63,16 +63,16 @@
 \chapter{Problem Description}
 \label{ch:problem}
 
-Automated systems for rating or ranking human faces are increasingly used in applications ranging from online platforms to hiring tools. Unlike many computer vision tasks, facial attractiveness prediction is inherently subjective and culturally shaped, which makes it particularly prone to encoding demographic bias. Models trained on data from a narrow set of ethnic groups may learn cultural beauty standards rather than broadly applicable visual patterns, raising both methodological and ethical concerns. We study this problem as a supervised regression task, where the goal is to predict the mean attractiveness rating assigned by human annotators to a given face image.
+Automated systems for rating or ranking human faces are increasingly used in applications ranging from online platforms to hiring tools. Unlike many computer vision tasks, facial attractiveness prediction is inherently subjective and culturally shaped, which makes it particularly prone to encoding demographic bias. Models trained on data from a narrow set of ethnic groups may learn cultural beauty standards rather than broadly applicable visual patterns, raising both methodological and ethical concerns. We study this problem as a supervised regression task, where the goal is to predict the mean attractiveness rating assigned by human annotators to a given face image. We combine three datasets: SCUT-FBP5500 \cite{liang2018scut} (Asian/Caucasian), MEBeauty \cite{lebedeva2021mebeauty} (six ethnic groups), and LiveBeauty \cite{li2025livebeauty} (large-scale Asian), to examine cross-dataset generalization and ethnic bias.
 
-Our core research questions are: (1) Does a model trained on SCUT-FBP5500 \cite{liang2018scut} (predominantly Asian/Caucasian) perform significantly worse on MEBeauty \cite{lebedeva2021mebeauty}, which includes Asian, Black, Caucasian, Hispanic, Indian, and Middle Eastern subjects? (2) Does training on the more diverse MEBeauty dataset reduce racial disparities in prediction accuracy? (3) \hl{Which geometric facial measurements (e.g., eye spacing, facial symmetry) drive attractiveness predictions across ethnic groups, and how well do interpretable landmark-based features perform relative to end-to-end deep models?}
+Our core research questions are: (1) How well do models generalize across datasets with different ethnic compositions, and does training on more ethnically diverse data reduce per-group performance disparities? (2) \hl{Which geometric facial measurements drive attractiveness predictions across ethnic groups, and how well do interpretable landmark-based features perform relative to end-to-end deep models?}
 
 \chapter{Data Acquisition}
 \label{ch:data}
 
-We use three publicly available datasets. \textbf{SCUT-FBP5500} \cite{liang2018scut} contains 5,500 face images (Asian and Caucasian subjects) with attractiveness ratings from 60 annotators per image on a 1--5 scale, available on Kaggle. \textbf{MEBeauty} \cite{lebedeva2021mebeauty} contains 2,550 images across six ethnic groups (Asian, Black, Caucasian, Hispanic, Indian, Middle Eastern) with ratings on a 1--10 scale, available on GitHub (fbplab/MEBeauty-database). \textbf{LiveBeauty} contains approximately 10,000 Asian face images with around 200,000 attractiveness labels, providing a large-scale Asian-focused complement to the other two corpora. We will verify completeness (expected missing rate ${<}1\%$) and check for corrupt files.
+We use three publicly available datasets. \textbf{SCUT-FBP5500} \cite{liang2018scut} contains 5,500 face images (Asian and Caucasian subjects) with attractiveness ratings from 60 annotators per image on a 1--5 scale, available on Kaggle. \textbf{MEBeauty} \cite{lebedeva2021mebeauty} contains 2,550 images across six ethnic groups (Asian, Black, Caucasian, Hispanic, Indian, Middle Eastern) with ratings on a 1--10 scale, available on GitHub (fbplab/MEBeauty-database). \textbf{LiveBeauty} \cite{li2025livebeauty} contains approximately 10,000 Asian face images with around 200,000 attractiveness labels, providing a large-scale single-ethnicity corpus that complements SCUT-FBP5500's Asian subset and strengthens cross-dataset generalization analysis. We will verify completeness (expected missing rate ${<}1\%$) and check for corrupt files.
 
-For cross-dataset evaluation, we treat the two datasets as separate corpora: models trained on one are tested on the other to quantify generalization failure. To make this comparison meaningful, we rescale both datasets' ratings to $[0,1]$ before modeling. Within MEBeauty, group-stratified splits enable per-ethnicity performance breakdowns.
+For cross-dataset evaluation, we treat the three datasets as separate corpora: models trained on one are tested on the others to quantify generalization failure. To make scores comparable across datasets, we apply z-score normalization per dataset (zero mean, unit variance). Within MEBeauty, group-stratified splits enable per-ethnicity performance breakdowns.
 
 \chapter{Methodology}
 \label{ch:method}
@@ -81,24 +81,27 @@ For cross-dataset evaluation, we treat the two datasets as separate corpora: mod
 
 \begin{itemize}
     \item \textbf{Face Detection \& Alignment:} Standard face detection crops and aligns all images to a consistent resolution across both datasets.
-    \item \hl{\textbf{Feature Extraction:} Interpretable tabular features computed from MediaPipe facial landmarks serve as the primary input representation, including geometric measurements such as interpupillary ratio, eye spacing, and mouth-to-chin ratio. Additional features may be engineered based on feature importance analysis.}
-    \item \textbf{Normalization:} Rating scores may be rescaled or standardized depending on the modeling approach (e.g., z-normalization to zero mean and unit variance); tabular geometric features standardized using z-normalization.
-    \item \textbf{Outlier Handling:} Images with high annotator variance (std~$> 1.0$) flagged; we experiment with their removal.
+    \item \hl{\textbf{Feature Extraction:} Interpretable tabular features computed from MediaPipe facial landmarks serve as the primary input representation. The current feature set includes geometric measurements like interpupillary ratio, eye spacing ratio or mouth-to-chin ratio.}
+    \hl{Additional geometric features may be engineered based on initial model performance and feature importance analysis.}
+    \item \textbf{Normalization:} Rating scores are z-score normalized per dataset (zero mean, unit variance) so that all three datasets can be combined for joint training. Tabular geometric features are standardized using z-scores.
+    \item \textbf{Outlier Handling:} Per-image annotator standard deviation is computed from individual rater scores. Images in the top 10\% of disagreement within each dataset are flagged as high-variance; we report metrics with and without these outliers.
 \end{itemize}
 
 \section{Proposed Algorithms}
 
-\noindent\textbf{Baseline:} Global mean predictor; Linear Regression on \hl{tabular geometric features}; Ridge Regression with regularization strength tuned via Optuna.
+\noindent\textbf{Baseline:} Global mean predictor; Ridge Regression ($\alpha$ tuned via Optuna) on \hl{tabular geometric features}.
 
-\noindent\textbf{Symbolic:} Decision Tree Regressor with tree depth and minimum samples per leaf tuned via Optuna --- enables inspection of which geometric features drive predictions and identification of interpretable decision rules.
+\noindent\textbf{Symbolic:} Decision Tree Regressor (max depth $\in \{3,5,7,10\}$, min samples leaf $\in \{5,10,20\}$), which enables inspection of which geometric features drive predictions and identification of interpretable decision rules.
 
-\noindent\textbf{Ensemble:} Stacking ensemble of XGBoost, Random Forest, Gradient Boosting, and Ridge base models with a Ridge meta-learner (5-fold CV), with feature importance analysis across ethnic groups.
+\noindent\textbf{Ensemble:} Random Forest Regressor ($n\_estimators \in \{100,200,500\}$, max features $\in \{\text{sqrt}, \log_2\}$) with feature importance analysis to identify which facial measurements are most predictive of attractiveness across different ethnic groups.
 
-\noindent\textbf{Boosting:} XGBoost Regressor with tree depth, learning rate, and number of estimators tuned via Optuna to capture nonlinear interactions between geometric features on \hl{tabular data}.
+\noindent\textbf{Boosting:} XGBoost, LightGBM, and CatBoost regressors with tuned tree depth, learning rate, and number of estimators to capture nonlinear interactions between geometric features while often outperforming a single tree or bagged ensemble on \hl{tabular data}.
 
-\noindent\textbf{Neural Baseline:} A small multilayer perceptron trained on tabular features with Adam optimizer, learning rate and batch size tuned via Optuna, up to 30 epochs with early stopping on validation MSE.
+\noindent\textbf{Stacking Ensemble:} StackingRegressor combining XGBoost, Random Forest, Gradient Boosting, and Ridge as base learners with a Ridge meta-learner, providing a committee-based prediction that mitigates individual model biases.
 
-Within each dataset, hyperparameters are tuned via Optuna with stratified 5-fold cross-validation and final evaluation uses an 80/20 stratified train/test split. For cross-dataset evaluation, models are trained on one dataset and tested directly on the other. Feature importance analysis will guide potential expansion of the geometric feature set.
+\noindent\textbf{Neural Baseline:} A three-layer MLP (128-64-32 units, ReLU activations) trained on tabular features with Adam ($lr = 0.001$), batch size 64, up to 500 iterations with early stopping (patience 30) on validation loss.
+
+Data is split into 80\% training / 20\% held-out test, stratified by ethnicity. Within the training data, hyperparameters are tuned via Optuna (TPE sampler, 200 trials) Bayesian optimization with stratified 5-fold cross-validation. Final evaluation is reported on the held-out test set. For cross-dataset evaluation, models are trained on one dataset and tested directly on the others. Feature importance analysis will guide potential expansion of the geometric feature set.
 
 \chapter{Evaluation and Expected Results}
 \label{ch:evaluation}
@@ -113,9 +116,10 @@ Within each dataset, hyperparameters are tuned via Optuna with stratified 5-fold
 
 \noindent\textbf{State-of-the-art comparison:} Results benchmarked against published baselines for SCUT-FBP5500 (prior CNN approaches achieve PCC~$\approx 0.90$) and related literature using end-to-end CNN or transformer architectures. These serve as external comparison points rather than models we necessarily reimplement.
 
+\enlargethispage{\baselineskip}
 \section{Expected Outcomes}
 
-We expect tabular geometric features to provide interpretable and computationally efficient predictions, while showing notable cross-dataset performance drops when training on SCUT and testing on MEBeauty. We anticipate higher errors for underrepresented groups (Black, Hispanic, Middle Eastern) in SCUT-trained models and partial mitigation when training on MEBeauty. \hl{Feature importance analysis will reveal which geometric measurements are most predictive and whether patterns differ across ethnic groups, and comparison with published CNN/transformer results will position the performance-interpretability tradeoff of our approach.}
+We expect tabular geometric features to provide interpretable and computationally efficient predictions, while showing notable cross-dataset performance drops when training on SCUT and testing on MEBeauty. We anticipate higher errors for underrepresented groups (Black, Hispanic, Middle Eastern) in SCUT-trained models and partial mitigation when training on MEBeauty. \hl{Feature importance analysis from tree-based models will reveal which geometric measurements (e.g., eye ratios, symmetry, proportions) are most predictive and whether these patterns differ across ethnic groups, exposing potential sources of cultural bias. Comparison with published CNN/transformer results will position the performance-interpretability tradeoff of our tabular approach.}
 
 \bibliography{refs}
 
