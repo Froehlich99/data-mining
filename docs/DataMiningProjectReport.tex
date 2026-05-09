@@ -1,0 +1,215 @@
+% Do not change document class, margins, fonts, etc.
+\documentclass[a4paper,oneside,bibliography=totoc]{scrbook}
+
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{csquotes}
+\usepackage[colorlinks,citecolor=Green]{hyperref}
+
+\usepackage{natbib}
+\bibliographystyle{chicagoa}
+\setcitestyle{authoryear,round,semicolon,aysep={},yysep={,}} \let\cite\citep
+
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+
+\begin{document}
+
+\frontmatter
+\subject{Project Report}
+\title{Ethnic Bias and Generalization in Facial Attractiveness Prediction}
+\author{Maxim Froehlich, David Siregar, Timon Kuhl,\\
+  Lars Bullmahn, Jagadeesh Gunti, Simon Heinz\\
+  Team 3}
+\date{May 17, 2026}
+\publishers{{\small Submitted to}\\
+  Data and Web Science Group\\
+  Prof.\ Dr.\ Christian Bizer\\
+  University of Mannheim\\}
+\maketitle
+
+\chapter{Abstract}
+
+\textit{[Abstract text here - max 200 words]}
+
+\begingroup%
+\hypersetup{hidelinks}
+\tableofcontents%
+\endgroup
+
+\mainmatter
+
+\chapter{Introduction}
+\label{ch:intro}
+
+\section{Problem Statement}
+
+
+Automated systems for rating or ranking human faces are increasingly used in applications ranging from online platforms to hiring tools. Unlike many computer vision tasks, facial attractiveness prediction is inherently subjective and culturally shaped, making it particularly prone to encoding demographic bias. Models trained on data from a narrow set of ethnic groups may learn cultural beauty standards rather than broadly applicable visual patterns, raising both methodological and ethical concerns.
+
+\section{Research Questions}
+
+Our core research questions are:
+
+\begin{enumerate}
+\item How well do models generalize across datasets with different ethnic compositions, and does training on more ethnically diverse data reduce per-group performance disparities?
+\item Which geometric facial measurements drive attractiveness predictions across ethnic groups, and how well do interpretable landmark-based features perform?
+\item To what extent does the choice of evaluation methodology (stratified vs.\ plain cross-validation) affect reported model performance and fairness metrics?
+\end{enumerate}
+
+
+\section{Scope and Contributions}
+
+We formulate facial attractiveness prediction as a supervised regression task where the goal is to predict the mean attractiveness rating assigned by human annotators to a face image. Our main contributions are:
+
+\begin{itemize}
+\item Combination and harmonization of three publicly available datasets differing in ethnic composition and scale
+\item Extraction of 39 interpretable geometric and expression features from MediaPipe Face Mesh landmarks
+\item Comprehensive evaluation of 10 regression models with stratified cross-validation and held-out test set
+\item Per-ethnicity fairness analysis quantifying performance disparities
+\item Cross-dataset generalization analysis revealing dataset-specific bias
+\item SHAP-based feature importance analysis identifying which facial measurements drive predictions
+\end{itemize}
+
+
+\chapter{Datasets and Data Acquisition}
+\label{ch:datasets}
+
+\section{Overview}
+
+\textit{[Dataset overview]}
+
+\section{Data Preprocessing}
+
+\textit{[Preprocessing steps]}
+
+\chapter{Methodology}
+\label{ch:methodology}
+
+\section{Feature Extraction}
+
+\textit{[Feature description]}
+
+\section{Models}
+
+\textit{[Model descriptions]}
+
+\section{Evaluation Setup}
+
+\textit{[Evaluation protocol]}
+
+\chapter{Experimental Evaluation}
+\label{ch:evaluation}
+
+\textit{[Evaluation description]}
+
+\chapter{Results}
+\label{ch:results}
+
+\section{Best Model Performance}
+
+\begin{table}[tb]
+  \centering
+  \small
+  \begin{tabularx}{\textwidth}{lXXX}
+    \toprule
+    \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Pearson r} \\
+    \midrule
+    \textbf{MLP} & \textbf{0.5438} & \textbf{0.7106} & \textbf{0.7143} \\
+    Ensemble (Stacking) & 0.5543 & 0.7148 & 0.7098 \\
+    CatBoost & 0.5555 & 0.7156 & 0.7092 \\
+    XGBoost & 0.5540 & 0.7169 & 0.7080 \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Top Model Performance on Held-Out Test Set}
+  \label{tab:best_models}
+\end{table}
+
+\section{Fairness Analysis}
+
+\begin{table}[tb]
+  \centering
+  \small
+  \begin{tabularx}{\textwidth}{lXXXX}
+    \toprule
+    \textbf{Ethnicity} & \textbf{N} & \textbf{MAE} & \textbf{Pearson r} & \textbf{Delta} \\
+    \midrule
+    Asian & 2,871 & 0.5217 & 0.7425 & --- \\
+    Black & 59 & 0.5842 & 0.5807 & +12.0\% \\
+    Caucasian & 496 & 0.5979 & 0.5932 & +14.6\% \\
+    Hispanic & 59 & 0.7333 & 0.4995 & +40.6\% \\
+    Indian & 31 & 1.0273 & 0.3072 & +96.9\% \\
+    Middle Eastern & 58 & 0.6844 & 0.6444 & +31.2\% \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Per-Ethnicity Fairness (MLP Best Model)}
+  \label{tab:fairness}
+\end{table}
+
+\section{Cross-Dataset Generalization}
+
+\begin{table}[tb]
+  \centering
+  \small
+  \begin{tabularx}{\textwidth}{lXXXXX}
+    \toprule
+    \textbf{Train} & \textbf{Test} & \textbf{MAE} & \textbf{r} \\
+    \midrule
+    LiveBeauty & MEBeauty & 0.8566 & 0.4178 \\
+    MEBeauty & SCUT & 0.7700 & 0.3610 \\
+    SCUT & MEBeauty & 0.8487 & 0.2800 \\
+    \midrule
+    \textbf{Combined (5-fold CV)} & \textbf{0.5683} & \textbf{0.6803} \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Cross-Dataset Generalization Performance}
+  \label{tab:cross_dataset}
+\end{table}
+
+\section{Feature Importance}
+
+\textit{[Top features: Eye width ratio, Nose width ratio, Mouth-chin distance, Gonial angle, Jaw width ratio]}
+
+\chapter{Discussion}
+
+\textit{[Discussion of results]}
+
+\chapter{Conclusions}
+
+\textit{[Conclusions]}
+
+\bibliography{references}
+
+\appendix
+
+\chapter{Additional Results}
+
+\textit{[Additional tables/figures]}
+
+\backmatter
+
+\chapter{Ehrenwörtliche Erklärung}
+
+Ich versichere, dass ich die beiliegende Bachelor-, Master-, Seminar-, oder Projektarbeit ohne Hilfe Dritter und ohne Benutzung anderer als der angegebenen Quellen und in der untenstehenden Tabelle angegebenen Hilfsmittel angefertigt und die den benutzten Quellen wörtlich oder inhaltlich entnommenen Stellen als solche kenntlich gemacht habe. Diese Arbeit hat in gleicher oder ähnlicher Form noch keiner Prüfungsbehörde vorgelegen.
+
+\begin{center}
+  \textbf{Declaration of Used AI Tools} \\[.3em]
+  \begin{tabularx}{\textwidth}{lXlc}
+    \toprule
+    Tool & Purpose & Where? & Useful? \\
+    \midrule
+    Claude & chapter declaration &  & + \\
+    \bottomrule
+  \end{tabularx}
+\end{center}
+
+\vspace{2cm}
+\noindent Unterschrift\\
+\noindent Mannheim, den XX.~Mai 2026 \hfill
+
+\end{document}
