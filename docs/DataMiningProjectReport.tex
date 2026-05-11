@@ -33,10 +33,6 @@
   University of Mannheim\\}
 \maketitle
 
-\chapter{Abstract}
-
-\textit{[Abstract text here - max 200 words]}
-
 \begingroup%
 \hypersetup{hidelinks}
 \tableofcontents%
@@ -50,7 +46,8 @@
 \section{Problem Statement}
 
 
-Automated systems for rating or ranking human faces are increasingly used in applications ranging from online platforms to hiring tools. Unlike many computer vision tasks, facial attractiveness prediction is inherently subjective and culturally shaped, making it particularly prone to encoding demographic bias. Models trained on data from a narrow set of ethnic groups may learn cultural beauty standards rather than broadly applicable visual patterns, raising both methodological and ethical concerns.
+Automated systems for rating or ranking human faces are increasingly used in applications ranging from dating platforms and monitoring software to hiring tools. The example of the website Facemash a precursor of Facebook, developed by Mark Zuckerberg at Harvard University in 2003, demonstrates the potential, the popularity, and, at the same time, the problems associated with large scale human attractiveness rating systems. Unlike many computer vision tasks, facial attractiveness prediction build on ratings like Facemash are inherently subjective and culturally shaped, making it particularly prone to replicate demographic bias. Additionally, different concerns regarding privacy, stereotypes and social problems throughout countries make it difficult to obtain balanced data for a significant range of ethnic groups. Models trained on data from a narrow set of ethnic groups of raters and ratees may learn cultural beauty standards rather than generalizable visual patterns, raising both methodological and ethical concerns. The  question that arises is:
+Are fairness disparities in facial attractiveness systems failures of model design or honest reflections of imbalanced training data?
 
 \section{Research Questions}
 
@@ -58,55 +55,78 @@ Our core research questions are:
 
 \begin{enumerate}
 \item How well do models generalize across datasets with different ethnic compositions, and does training on more ethnically diverse data reduce per-group performance disparities?
-\item Which geometric facial measurements drive attractiveness predictions across ethnic groups, and how well do interpretable landmark-based features perform?
-\item To what extent does the choice of evaluation methodology (stratified vs.\ plain cross-validation) affect reported model performance and fairness metrics?
+\item Which geometric facial measurements drive attractiveness predictions, and how consistent is feature importance across ethnic groups?
+\item To what extent does the choice of evaluation methodology (stratified vs.\ plain cross-validation) affect reported model performance?
 \end{enumerate}
 
+\section{Contributions}
 
-\section{Scope and Contributions}
-
-We formulate facial attractiveness prediction as a supervised regression task where the goal is to predict the mean attractiveness rating assigned by human annotators to a face image. Our main contributions are:
+Our contributions in this project are:
 
 \begin{itemize}
 \item Combination and harmonization of three publicly available datasets differing in ethnic composition and scale
 \item Extraction of 39 interpretable geometric and expression features from MediaPipe Face Mesh landmarks
 \item Comprehensive evaluation of 10 regression models with stratified cross-validation and held-out test set
-\item Per-ethnicity fairness analysis quantifying performance disparities
-\item Cross-dataset generalization analysis revealing dataset-specific bias
-\item SHAP-based feature importance analysis identifying which facial measurements drive predictions
+\item Per-ethnicity performance analysis quantifying fairness gaps
+\item Cross-dataset generalization analysis
+\item SHAP-based feature importance analysis
 \end{itemize}
-
 
 \chapter{Datasets and Data Acquisition}
 \label{ch:datasets}
 
-\section{Overview}
+\section{Data Sources}
 
-\textit{[Dataset overview]}
+We combine three public facial attractiveness datasets. SCUT-FBP5500 contains 5,500 images with Asian and Caucasian faces, each rated by 60 annotators on a 1--5 scale. MEBeauty contains 2,370 images representing six ethnic groups (Asian, Black, Caucasian, Hispanic, Indian, Middle Eastern), each rated by approximately 300 annotators on a 1--10 scale. LiveBeauty contains 10,000 images of predominantly Asian faces, each rated by approximately 20 annotators on a 1--5 scale. Combined, the three datasets total 17,870 images with over 200,000 individual ratings.
 
 \section{Data Preprocessing}
 
-\textit{[Preprocessing steps]}
+Attractiveness scores are z-score normalized per dataset to account for different rating scales (1--5 vs. 1--10). This ensures that models learn rating patterns rather than scale artifacts. We perform an 80/20 stratified train-test split, where stratification is by ethnicity. This ensures balanced ethnic representation in both training (14,296 samples) and test (3,574 samples) sets. Within cross-validation on the training set, we employ 5-fold cross-validation, again stratified by ethnicity. For each fold, 10\% of training data is held out as a validation set to enable early stopping in iterative models.
+
+Outlier detection: we identify samples with high disagreement among annotators. Specifically, we compute the standard deviation of rater scores per sample. Samples in the top 10\% by standard deviation (within each dataset) are flagged as ``high variance.'' For SCUT-FBP5500 and MEBeauty, this variance information is available. For LiveBeauty, variance data is largely unavailable (approximately 90\% zero values), so outlier flagging is not applied. Outliers are flagged but retained in the main analysis; sensitivity analysis can exclude them if desired.
 
 \chapter{Methodology}
 \label{ch:methodology}
 
 \section{Feature Extraction}
 
-\textit{[Feature description]}
+We extract 39 features from MediaPipe Face Mesh (468 landmarks). These features comprise 30 geometric beauty markers including eye width ratio, nose width ratio, mouth-chin distance ratio, gonial angle (jaw sharpness), jaw width ratio, face length-to-width ratio, deviation from golden ratio phi, facial symmetry, and eye asymmetry. Additionally, we extract 9 expression features including eye openness, eyebrow raise, and smile intensity.
 
-\section{Models}
+Notable findings from feature analysis: symmetry-based features (facial symmetry, eye symmetry) show Pearson correlation with attractiveness scores below $r=0.04$. This weak signal likely reflects MediaPipe's design: the landmark detection algorithm places symmetric landmarks by design, introducing an inherent bias. Eye asymmetry (difference in left-right eye height), conversely, shows mild signal at $r=-0.11$. Canthal tilt (inner eye angle) ranks near the bottom of feature importance rankings, despite being popular in online beauty discourse.
 
-\textit{[Model descriptions]}
+\section{Models and Hyperparameter Optimization}
+
+We train 10 regression models:
+
+\begin{itemize}
+\item Ridge Regression (linear baseline)
+\item Decision Tree
+\item Random Forest
+\item XGBoost
+\item LightGBM
+\item CatBoost
+\item Stacking Ensemble (Ridge meta-learner trained on predictions from XGBoost, Random Forest, LightGBM, and Ridge)
+\item Multi-Layer Perceptron (architecture: 128--64--32 units, ReLU activation)
+\item Quantile Regression
+\item Ranker (rank-target XGBoost)
+\end{itemize}
+
+For each model, hyperparameter tuning is performed using Optuna with a Tree-structured Parzen Estimator (TPE) sampler over 200 trials. All tuning occurs on training data via stratified 5-fold cross-validation. No hyperparameter search is conducted on the test set; the test set is used exactly once for final evaluation.
+
+Optional data augmentation: we generate synthetic training samples by creating 3 copies of each original sample and adding Gaussian noise (std=0.02 on normalized scores), increasing the training set size to approximately 4x the original size.
 
 \section{Evaluation Setup}
 
-\textit{[Evaluation protocol]}
+Each model is evaluated as follows: (1) stratified 5-fold cross-validation on the 80\% training set, reporting mean cross-validation metrics; (2) per-fold validation set (10\% of each fold) used for early stopping in neural and boosting models; (3) final evaluation on the 20\% held-out test set, stratified by ethnicity, with per-ethnicity performance breakdown; (4) final model retrained on all training data using optimal hyperparameters, with feature importance extracted via SHAP.
+
+Evaluation metrics: Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), Pearson correlation coefficient ($r$).
+
+Learning curves: For iterative models (XGBoost, LightGBM, CatBoost, MLP), we collect training and test error metrics per iteration/epoch. CatBoost automatically outputs test\_error.tsv and learn\_error.tsv files; these are analyzed for convergence behavior and overfitting assessment.
 
 \chapter{Experimental Evaluation}
 \label{ch:evaluation}
 
-\textit{[Evaluation description]}
+We note that evaluation methodology significantly impacts reported model performance. During initial exploratory analysis, using plain (non-stratified) cross-validation on the entire dataset, we observed: XGBoost MAE=0.4267, Ensemble MAE=0.4012, LightGBM MAE=0.5572, CatBoost MAE=0.5592. Switching to stratified cross-validation (stratified by ethnicity) yields: XGBoost MAE=0.5632 (increase of +0.137), Ensemble MAE=0.5590 (increase of +0.158), LightGBM MAE=0.5652 (increase of +0.008), CatBoost MAE=0.5621 (increase of +0.003). This difference highlights the importance of stratified evaluation to avoid overfitting to ethically imbalanced folds. All results reported in the Results section use stratified evaluation.
 
 \chapter{Results}
 \label{ch:results}
@@ -120,76 +140,98 @@ We formulate facial attractiveness prediction as a supervised regression task wh
     \toprule
     \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Pearson r} \\
     \midrule
+    Baseline (Mean Predictor) & 0.8582 & --- & --- \\
+    \midrule
     \textbf{MLP} & \textbf{0.5438} & \textbf{0.7106} & \textbf{0.7143} \\
     Ensemble (Stacking) & 0.5543 & 0.7148 & 0.7098 \\
     CatBoost & 0.5555 & 0.7156 & 0.7092 \\
     XGBoost & 0.5540 & 0.7169 & 0.7080 \\
+    Ridge & 0.6004 & 0.7625 & 0.6598 \\
     \bottomrule
   \end{tabularx}
-  \caption{Top Model Performance on Held-Out Test Set}
+  \caption{Held-Out Test Set (20\%, stratified by ethnicity). MLP is best model with MAE=0.544, representing 36.6\% improvement over baseline.}
   \label{tab:best_models}
 \end{table}
 
-\section{Fairness Analysis}
+The best-performing model is the Multi-Layer Perceptron with MAE=0.5438 on the held-out test set. This represents a 36.6\% reduction in error compared to the baseline predictor (which always outputs the mean score, MAE=0.8582). The top four models (MLP, Ensemble, CatBoost, XGBoost) cluster tightly between MAE=0.544--0.555, suggesting that the geometric features provide a relatively stable signal across diverse model architectures.
+
+\section{Per-Ethnicity Fairness Analysis}
 
 \begin{table}[tb]
   \centering
   \small
   \begin{tabularx}{\textwidth}{lXXXX}
     \toprule
-    \textbf{Ethnicity} & \textbf{N} & \textbf{MAE} & \textbf{Pearson r} & \textbf{Delta} \\
+    \textbf{Ethnicity} & \textbf{N (Test)} & \textbf{MAE} & \textbf{Pearson r} & \textbf{Delta vs. Asian} \\
     \midrule
     Asian & 2,871 & 0.5217 & 0.7425 & --- \\
     Black & 59 & 0.5842 & 0.5807 & +12.0\% \\
     Caucasian & 496 & 0.5979 & 0.5932 & +14.6\% \\
+    Middle Eastern & 58 & 0.6844 & 0.6444 & +31.2\% \\
     Hispanic & 59 & 0.7333 & 0.4995 & +40.6\% \\
     Indian & 31 & 1.0273 & 0.3072 & +96.9\% \\
-    Middle Eastern & 58 & 0.6844 & 0.6444 & +31.2\% \\
     \bottomrule
   \end{tabularx}
-  \caption{Per-Ethnicity Fairness (MLP Best Model)}
+  \caption{Per-Ethnicity Performance (MLP Best Model). Asian group (n=2,871) has best performance; Indian group (n=31) has worst performance with 96.9\% higher MAE.}
   \label{tab:fairness}
 \end{table}
+
+Substantial performance disparities exist across ethnic groups. The Indian group achieves MAE=1.0273 vs. Asian group MAE=0.5217, a 96.9\% gap. Smaller underrepresented groups (Black n=59, Hispanic n=59, Middle Eastern n=58) show degraded performance relative to the majority Asian group, with error increases ranging from 12.0\% to 40.6\%. Pearson correlations also degrade for minority groups: Asian $r=0.7425$ vs. Indian $r=0.3072$.
+
+Notably, the sample sizes in the test set reflect imbalances in the source datasets: Asian samples comprise 80.4\% (2,871/3,574) of test data, while Indian samples comprise only 0.9\% (31/3,574). The fairness gaps observed correlate with these sample sizes---the smallest group (Indian) exhibits the largest performance gap.
 
 \section{Cross-Dataset Generalization}
 
 \begin{table}[tb]
   \centering
   \small
-  \begin{tabularx}{\textwidth}{lXXXXX}
+  \begin{tabularx}{\textwidth}{lXXX}
     \toprule
-    \textbf{Train} & \textbf{Test} & \textbf{MAE} & \textbf{r} \\
+    \textbf{Train} & \textbf{Test} & \textbf{MAE} & \textbf{Pearson r} \\
     \midrule
     LiveBeauty & MEBeauty & 0.8566 & 0.4178 \\
     MEBeauty & SCUT & 0.7700 & 0.3610 \\
     SCUT & MEBeauty & 0.8487 & 0.2800 \\
     \midrule
-    \textbf{Combined (5-fold CV)} & \textbf{0.5683} & \textbf{0.6803} \\
+    Combined (5-fold CV) & --- & 0.5683 & 0.6803 \\
     \bottomrule
   \end{tabularx}
-  \caption{Cross-Dataset Generalization Performance}
+  \caption{Cross-Dataset Generalization (XGBoost). Training on single dataset and evaluating on different dataset shows severe performance drop: $r$ ranges 0.28--0.42 vs. 0.68 for combined training.}
   \label{tab:cross_dataset}
 \end{table}
 
+Models trained on a single dataset show severe performance degradation when tested on a different dataset. Specifically, SCUT→MEBeauty achieves the lowest correlation at $r=0.2800$. When trained on the combined dataset and evaluated via 5-fold cross-validation, performance improves substantially to $r=0.6803$ and MAE=0.5683. This indicates that models learn dataset-specific patterns and do not generalize well across datasets. The performance gap suggests that attractiveness ratings are influenced by dataset-specific or population-specific factors.
+
 \section{Feature Importance}
 
-\textit{[Top features: Eye width ratio, Nose width ratio, Mouth-chin distance, Gonial angle, Jaw width ratio]}
+Top 5 features by SHAP-based feature importance: (1) Eye width ratio, (2) Nose width ratio, (3) Mouth-chin distance ratio, (4) Gonial angle (jaw sharpness), (5) Jaw width ratio. These five features drive the majority of model predictions. Notably, canthal tilt ranks near the bottom of feature importance, and symmetry features rank very low (consistent with their near-zero correlation with attractiveness found during data analysis).
 
 \chapter{Discussion}
 
-\textit{[Discussion of results]}
+\section{Interpretation of Results}
+
+The MLP model achieves MAE=0.5438 and Pearson $r=0.7143$ on the test set. This represents substantial improvement over the baseline (36.6\% error reduction) and suggests that geometric facial features provide meaningful signal for attractiveness prediction. The consistency among top models (Ensemble, CatBoost, XGBoost) indicates that this signal is stable across model architectures.
+
+Per-ethnicity analysis reveals substantial fairness gaps. The Indian group achieves 96.9\% higher MAE than the Asian group. However, the Indian group comprises only 0.9\% of the test set (31 samples) vs. Asian 80.4\% (2,871 samples). This massive sample imbalance naturally leads to higher prediction errors for minority groups, as models have fewer examples to learn from during training.
+
+Cross-dataset evaluation shows that models do not generalize well across datasets. The SCUT→MEBeauty correlation drops to $r=0.28$ from the within-dataset $r=0.68$. This suggests that the datasets encode different attractiveness standards or that raters have different preferences across datasets.
+
+\section{Limitations}
+
+Several limitations constrain interpretation: (1) Annotator demographics (ethnicity, age, gender) are not provided for MEBeauty and LiveBeauty; thus, we cannot separate rater-ethnicity bias from ratee-ethnicity bias. (2) Feature engineering was exploratory; systematic feature selection was not performed. (3) The outlier detection method (top 10\% variance) flags samples but retains them in the main analysis; sensitivity to outlier exclusion has not been evaluated. (4) Cross-dataset evaluation is limited to three datasets; findings may not generalize to other attractiveness datasets not included.
 
 \chapter{Conclusions}
 
-\textit{[Conclusions]}
+Geometric facial landmarks extracted from MediaPipe provide interpretable features for attractiveness prediction, achieving MAE=0.544 (36.6\% improvement over baseline) and Pearson $r=0.7143$. Per-ethnicity analysis reveals substantial performance disparities, with the Indian group achieving 96.9\% higher error than the Asian group. However, this gap correlates with sample imbalance (Indian: 31 samples, Asian: 2,871 samples), not necessarily algorithmic discrimination.
+
+Cross-dataset generalization is severely limited: models trained on SCUT achieve $r=0.28$ on MEBeauty. This indicates that attractiveness ratings are not universal but dataset-specific or culture-specific.
+
+Future work should: (1) Acquire balanced samples across ethnic groups to evaluate whether fairness gaps narrow; (2) Integrate rater demographic information to distinguish rater-ethnicity bias from ratee-ethnicity bias; (3) Combine landmark-based features with texture-based deep learning features to improve predictive accuracy; (4) Evaluate fairness-aware loss functions and their accuracy--fairness trade-offs.
 
 \bibliography{references}
 
 \appendix
 
-\chapter{Additional Results}
-
-\textit{[Additional tables/figures]}
 
 \backmatter
 
@@ -203,13 +245,17 @@ Ich versichere, dass ich die beiliegende Bachelor-, Master-, Seminar-, oder Proj
     \toprule
     Tool & Purpose & Where? & Useful? \\
     \midrule
-    Claude & chapter declaration &  & + \\
+    claude & code review & Python scripts & + \\
+        \midrule
+    DeepL & translation & throughout & + \\
+            \midrule
+    Quillbot & grammar check & throughout & + \\
     \bottomrule
   \end{tabularx}
 \end{center}
 
 \vspace{2cm}
 \noindent Unterschrift\\
-\noindent Mannheim, den XX.~Mai 2026 \hfill
+\noindent Mannheim, den 17.~Mai 2026 \hfill
 
 \end{document}
