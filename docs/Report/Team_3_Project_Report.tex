@@ -1,0 +1,357 @@
+% Do not change document class, margins, fonts, etc.
+\documentclass[a4paper,oneside,bibliography=totoc]{scrbook}
+
+% some useful packages (add more as needed)
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\counterwithin{algorithm}{chapter}
+\usepackage{algorithmic}
+\usepackage{csquotes}
+\renewcommand{\algorithmiccomment}[1]{\hfill\textit{// #1}}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{soul}
+\sethlcolor{yellow}
+\usepackage[colorlinks,citecolor=Green,linkcolor=black]{hyperref}
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep, topsep=2pt}
+\setlist[enumerate]{noitemsep, topsep=2pt}
+\usepackage{multirow}
+
+% Remove running headers, use plain page numbers only
+\usepackage{scrlayer-scrpage}
+\pagestyle{plain}
+
+% Prevent chapters from forcing a new page, while keeping KOMA heading style
+\makeatletter
+\renewcommand\chapter{\if@openright\else\fi
+  \thispagestyle{plain}%
+  \global\@topnum\z@
+  \@afterindentfalse
+  \secdef\@chapter\@schapter}
+\makeatother
+
+% IEEE citation style
+\usepackage{IEEEtrantools}
+\bibliographystyle{IEEEtran}
+\usepackage{microtype}
+
+% example environments
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+
+\begin{document}
+
+\frontmatter
+\subject{Project Report: IE500 Data Mining}
+\title{Ethnic Bias and Generalization in Facial Attractiveness Prediction from Geometric Beauty Markers}
+\author{Team Number: 3 \\
+        Maxim Froehlich, David Siregar, Timon Kuhl, \\
+        Lars Bullmahn, Jagadeesh Gunti, Simon Heinz}
+\date{May 17, 2026}
+\publishers{{\small Submitted to}\\
+  Prof.\ Dr.\ Christian Bizer\\
+  University of Mannheim\\
+  Data and Web Science Group}
+\maketitle
+
+\tableofcontents
+
+\mainmatter
+
+% ============================================================================
+\chapter{Application Area and Goals}
+\label{ch:intro}
+% ============================================================================
+
+Automated facial attractiveness prediction has applications ranging from recommendation systems for cosmetics and plastic surgery planning to bias auditing in hiring platforms. Unlike most computer vision tasks, attractiveness ratings are inherently subjective and culturally shaped: what is considered attractive varies across ethnic groups and geographies. Models trained on data from a narrow demographic may learn culture-specific beauty standards rather than broadly applicable visual patterns, raising both methodological and ethical concerns.\\
+We frame this problem as a \textbf{supervised regression task}: given a face image, predict the mean attractiveness score assigned by human annotators. Rather than relying on black-box convolutional neural networks (CNNs), we deliberately choose an \textbf{interpretable, geometry-based approach}---extracting 30 facial beauty markers from MediaPipe landmarks and training gradient-boosted tree models. This enables SHAP-based feature importance analysis to reveal \emph{which} geometric proportions drive perceived attractiveness and whether these patterns differ across ethnic groups.\\
+Our three research questions are:
+\begin{enumerate}
+    \item Does a model trained on SCUT-FBP5500 \cite{liang2018scut} (Asian/Caucasian only) perform significantly worse on MEBeauty \cite{lebedeva2021mebeauty} (six ethnicities)?
+    \item Does training on the more diverse MEBeauty dataset or a combined multi-dataset corpus reduce racial disparities in prediction accuracy?
+    \item Which specific geometric measurements (e.g., eye ratios, nose proportions, facial symmetry) show the strongest correlation with attractiveness ratings, and do these patterns vary across ethnic groups?
+\end{enumerate}
+
+% ============================================================================
+\chapter{Data Profile}
+\label{ch:data}
+% ============================================================================
+
+\section{Datasets}
+
+We combine three publicly available facial beauty datasets to create a diverse corpus of 17,870 annotated face images, as shown in table \ref{tab:datasets}.\\
+\begin{table}[h]
+\centering
+\caption{Summary of datasets used.}
+\label{tab:datasets}
+\begin{tabular}{lccccl}
+\toprule
+\textbf{Dataset} & \textbf{N} & \textbf{Scale} & \textbf{Ethnicities} & \textbf{Raters/Image} & \textbf{Source} \\
+\midrule
+SCUT-FBP5500 \cite{liang2018scut} & 5,500 & 1--5 & 2 & 60 & Kaggle \\
+MEBeauty \cite{lebedeva2021mebeauty} & 2,370 & 1--10 & 6 & ${\sim}$300 & GitHub \\
+LiveBeauty \cite{yu2024livebeauty} & 10,000 & 1--5 & 1 & ${\sim}$20 & GitHub \\
+\bottomrule
+\end{tabular}
+\end{table}
+\textbf{SCUT-FBP5500} contains 5,500 front-facing images (2,750 male, 2,750 female) from Asian and Caucasian subjects, each rated by 60 annotators on a 1--5 Likert scale. \textbf{MEBeauty} provides 2,370 images across six ethnic groups (Asian, Black, Caucasian, Hispanic, Indian, Middle Eastern) rated by approximately 300 annotators on a 1--10 scale, making it significantly more diverse but smaller.\\\textbf{LiveBeauty} contributes 10,000 Asian faces with 200,000 total pairwise beauty labels converted to mean scores on a 1--5 scale.\\
+\section{Data Quality and Ethnic Distribution}
+
+After feature extraction via MediaPipe Face Mesh (Chapter~\ref{ch:preprocessing}), the final tabular dataset contains 17,870 rows and 50 columns: 30 geometric beauty markers, 9 expression-related features, and metadata columns (dataset source, ethnicity, gender, raw score, z-normalized score). The extraction success rate was 99.7\% (54 images failed).\\
+The combined dataset is heavily imbalanced: Asian faces account for 80.3\% (14,351), Caucasian 13.9\% (2,480), and remaining groups 5.8\% (Black: 296, Hispanic: 296, Middle Eastern: 291, Indian: 156). This motivates our fairness analysis.\\
+
+\section{Attribute Overview and Label Normalization}
+
+\begin{table}[h]
+\centering
+\caption{Summary of extracted feature categories (30 geometric features).}
+\label{tab:features}
+\small
+\begin{tabular}{lcp{6.5cm}}
+\toprule
+\textbf{Category} & \textbf{Count} & \textbf{Example Features} \\
+\midrule
+Eyes & 9 & canthal\_tilt, eye\_width\_ratio, eye\_area\_ratio, eye\_asymmetry \\
+Nose & 3 & nose\_width\_ratio, nose\_length\_ratio, nose\_symmetry \\
+Mouth/Lips & 7 & lip\_fullness\_ratio, mouth\_chin\_ratio, cupids\_bow\_ratio \\
+Face \& Jaw & 7 & facial\_symmetry, jaw\_width\_ratio, gonial\_angle, chin\_taper \\
+Proportions & 4 & midface\_ratio, lower\_face\_ratio, phi\_deviation, facial\_thirds\_symmetry \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All features are \textbf{normalized relative to face dimensions} (ratios to face width or height), making them resolution-invariant. Canthal tilt is corrected for head roll using the inter-eye baseline angle.\\
+Since the three datasets use different rating scales (1--5, 1--10, 1--5), we apply \textbf{z-score normalization per dataset}: $z_i = (x_i - \mu_d) / \sigma_d$. We considered alternatives: (1)~\textbf{min-max scaling} to [0,1], which is sensitive to outliers; and (2)~\textbf{percentile-rank transformation}, which discards distance information. We chose z-scores because they preserve relative distances while aligning center and scale---important for regression. A limitation is the Gaussian assumption; LiveBeauty's slight left skew introduces minor tail distortion.\\
+
+% ============================================================================
+\chapter{Preprocessing and Feature Engineering}
+\label{ch:preprocessing}
+% ============================================================================
+
+\section{Landmark Extraction and Feature Computation}
+
+We use Google's MediaPipe Face Mesh \cite{kartynnik2019mediapipe} to detect 478 facial landmarks plus 52 blendshape coefficients per image. The pipeline operates in three steps: (1)~face detection (single-face constraint), (2)~landmark localization (468 facial + 10 iris landmarks), and (3)~blendshape estimation (52 expression coefficients). All processing runs on CPU, requiring approximately 0.1 seconds per image.\\
+From the 478 landmarks, we compute 30 geometric beauty markers organized into five categories (Table~\ref{tab:features}). All distances are expressed as \textbf{ratios to face width or height}, eliminating dependence on image resolution. Canthal tilt is corrected for head roll using the inter-eye baseline angle, isolating true eye slant from head pose. Bilateral symmetry is computed from 9 paired landmark distances relative to the facial midline, and \texttt{phi\_deviation} measures how far the face deviates from the golden ratio ($\varphi = 1.618$). Additionally, 9 expression features derived from blendshapes (smile intensity, frown, jaw openness, etc.) control for expression confounds.\\
+
+\section{Data Cleaning and Augmentation}
+
+No missing value imputation was required since MediaPipe either produces a full landmark set or fails entirely (54 images removed). Features with physically implausible values are capped at the 99.5th percentile.\\
+\textbf{Outlier detection}: We flag samples with high annotator disagreement by computing the per-sample standard deviation of rater scores. Samples in the top 10\% by standard deviation within each dataset are marked as ``high variance.'' This information is available for SCUT-FBP5500 and MEBeauty; for LiveBeauty, variance data is largely unavailable ($\approx$90\% zero values), so flagging is not applied there. Flagged samples are retained in the main analysis but can be excluded in sensitivity analyses.\\
+During training, we apply \textbf{feature-space augmentation}: 3 noise-perturbed copies per sample ($\sigma = 0.02$, proportional to feature magnitude) quadruple the effective training set, simulating measurement variance from slightly different landmark positions. Attractiveness scores are z-normalized per dataset (mean=0, std=1); predictions can be mapped back via $\hat{x} = \hat{z} \cdot \sigma_d + \mu_d$.\\
+
+% ============================================================================
+\chapter{Data Mining Methods}
+\label{ch:methods}
+% ============================================================================
+
+\section{Models}
+
+We train seven distinct models spanning different algorithmic families, all taking the same 30-feature input vector. As \textbf{baselines}, we use a Global Mean Predictor (always predicts the training-set mean z-score, yielding MAE~$\approx$~0.86 on our held-out test set) and \textbf{Ridge Regression} (a linear model that separates the contribution of nonlinear interactions from raw linear signal).\\
+Our primary models are three \textbf{gradient-boosted tree} variants: \textbf{XGBoost} \cite{chen2016xgboost} (1,000 trees, max depth 6, learning rate 0.05, early stopping with patience=50), \textbf{LightGBM} \cite{ke2017lightgbm} (leaf-wise growth, 31 leaves, histogram-based splits), and \textbf{CatBoost} \cite{prokhorenkova2018catboost} (ordered boosting with 1,000 iterations). A \textbf{Stacking Ensemble} combines four base learners (XGBoost, Random Forest, Gradient Boosting, Ridge) via a Ridge meta-learner, using internal 5-fold CV to generate out-of-fold meta-features. We also train a \textbf{3-layer MLP} (128--64--32 neurons, ReLU, Adam optimizer, early stopping on validation loss). Two specialized variants address known regression pathologies: \textbf{Quantile XGBoost} predicts the median rather than the mean (reducing outlier sensitivity), and \textbf{Ranker XGBoost} trains on percentile-rank targets then maps predictions back via the inverse empirical CDF, explicitly combating regression-to-the-mean.\\
+
+\section{Hyperparameter Optimization}
+
+Hyperparameters for gradient-boosted trees are optimized with \textbf{Optuna} \cite{akiba2019optuna} (TPE sampling, 200 trials) over max\_depth $\in [3, 10]$, learning\_rate $\in [0.01, 0.3]$ (log-uniform), n\_estimators $\in [100, 2000]$, subsample/colsample\_bytree $\in [0.5, 1.0]$, and L1/L2 regularization $\in [10^{-8}, 10]$, minimizing 5-fold CV MAE.\\
+
+\section{Evaluation Setup and Metrics}
+
+\textbf{Holdout Test Set}: We use a stratified 80/20 train/test split (stratified by ethnicity) with 5-fold CV on the training portion. Within each fold, 10\% is held out for early stopping.
+\textbf{Cross-Dataset Generalization}: We train on one dataset and evaluate on the others (6 combinations) to test ethnic transfer.
+\textbf{Fairness}: Using out-of-fold predictions, we compute per-ethnicity and per-gender metrics. Fairness is quantified via the absolute fairness gap (max group MAE $-$ min group MAE).\\
+Our primary metric is \textbf{MAE} (Mean Absolute Error in z-score units). We additionally report RMSE, Pearson $r$ (ranking ability), baseline improvement (\% MAE reduction vs.\ global mean predictor), and std ratio ($\sigma(\hat{y}) / \sigma(y)$; values $<$1 indicate regression-to-the-mean). Error analysis includes per-quartile MAE, per-ethnicity SHAP via TreeExplainer \cite{lundberg2017shap}, and regression-to-the-mean diagnostics.\\
+
+% ============================================================================
+\chapter{Results and Discussion}
+\label{ch:results}
+% ============================================================================
+
+\section{Overall Model Performance vs.\ Baseline}
+
+We evaluate all models against a \textbf{Global Mean Predictor} baseline that always predicts the training-set mean z-score (MAE~=~0.80). Table~\ref{tab:results} summarizes holdout test set results (stratified 80/20 split, 3,574 test samples).\\
+
+\begin{table}[h]
+\centering
+\caption{Model performance on held-out test set. Baseline MAE = 0.858.}
+\label{tab:results}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Pearson $r$} & \textbf{vs.\ Baseline} \\
+\midrule
+Global Mean (baseline) & 0.858 & --- & --- & --- \\
+Ridge Regression & 0.600 & 0.763 & 0.660 & $-$30.0\% \\
+Decision Tree & 0.663 & 0.852 & 0.546 & $-$22.7\% \\
+Random Forest & 0.620 & --- & 0.657 & $-$27.8\% \\
+XGBoost & 0.554 & 0.708 & 0.708 & $-$35.4\% \\
+LightGBM & 0.556 & --- & 0.705 & $-$35.2\% \\
+CatBoost & 0.556 & --- & 0.709 & $-$35.3\% \\
+Stacking Ensemble & 0.554 & --- & 0.710 & $-$35.4\% \\
+MLP (Neural Network) & 0.544 & --- & 0.714 & $-$36.6\% \\
+Quantile XGBoost & 0.560 & --- & 0.696 & $-$34.7\% \\
+Ranker XGBoost & 0.557 & --- & 0.702 & $-$35.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All learned models substantially outperform the baseline, confirming that the 30 geometric features carry genuine predictive signal. Even Ridge Regression reduces MAE by 30\%, showing meaningful linear structure. The gradient-boosted tree family clusters tightly at 35\% improvement, while the MLP achieves the best holdout MAE (0.544, $-$36.6\%).\\
+
+\section{Cross-Dataset Generalization}
+
+\begin{table}[h]
+\centering
+\caption{Cross-dataset generalization (train on one dataset, test on another).}
+\label{tab:crossdataset}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Experiment} & \textbf{MAE} & \textbf{Pearson $r$} & \textbf{Test N} \\
+\midrule
+SCUT $\rightarrow$ MEBeauty & 0.849 & 0.280 & 2,370 \\
+SCUT $\rightarrow$ LiveBeauty & 0.764 & 0.477 & 10,000 \\
+MEBeauty $\rightarrow$ SCUT & 0.770 & 0.361 & 5,500 \\
+MEBeauty $\rightarrow$ LiveBeauty & 0.744 & 0.483 & 10,000 \\
+LiveBeauty $\rightarrow$ MEBeauty & 0.857 & 0.418 & 2,370 \\
+LiveBeauty $\rightarrow$ SCUT & 0.720 & 0.497 & 5,500 \\
+\midrule
+Combined (5-fold CV) & 0.568 & 0.680 & 17,870 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The worst generalization occurs for \textbf{SCUT $\rightarrow$ MEBeauty} ($r$=0.28), confirming that a model trained on only Asian and Caucasian faces fails catastrophically when tested on a diverse population (Black, Hispanic, Indian, Middle Eastern subjects). This validates research question (1). Combining all datasets during training (last row) substantially improves cross-ethnic performance, answering research question (2) affirmatively.\\
+
+\section{Fairness Analysis: Multi-Model Bias Comparison}
+
+To understand whether model choice affects fairness, we compute per-ethnicity MAE for multiple model families and report the \textbf{absolute fairness gap} (maximum group MAE minus minimum group MAE) as well as the per-group deviation from the overall MAE.\\
+
+\begin{table}[h]
+\centering
+\caption{Per-ethnicity MAE across model families (holdout test set). Gap = max $-$ min group MAE.}
+\label{tab:fairness_multi}
+\small
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Model} & \textbf{Asian} & \textbf{Cauc.} & \textbf{Black} & \textbf{Hisp.} & \textbf{Mid-E.} & \textbf{Indian} & \textbf{Gap} \\
+\midrule
+Ridge & 0.587 & 0.616 & 0.582 & 0.762 & 0.743 & 1.038 & 0.456 \\
+Decision Tree & 0.648 & 0.648 & 0.689 & 0.840 & 0.716 & 1.007 & 0.359 \\
+Random Forest & 0.605 & 0.635 & 0.607 & 0.780 & 0.686 & 1.020 & 0.415 \\
+XGBoost & 0.552 & 0.601 & 0.616 & 0.717 & 0.718 & 0.876 & 0.324 \\
+MLP & 0.531 & 0.575 & 0.593 & 0.698 & 0.703 & 0.851 & 0.320 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key observations}: (1)~The absolute fairness gap ranges from 0.320 (MLP) to 0.456 (Ridge), showing that more expressive models reduce---but do not eliminate---ethnic disparities. (2)~The Indian subgroup consistently has the highest MAE across all models, confirming that the bias is driven by \emph{data scarcity} (N=156) rather than any particular model's inductive bias. (3)~The gap between Asian and Indian MAE is approximately 0.3--0.45 z-score units regardless of model family, suggesting that the fairness problem is fundamentally a data problem: no model architecture can compensate for having 92$\times$ fewer training examples for Indian faces than Asian faces.
+
+The gender gap is smaller: male MAE~=~0.54, female MAE~=~0.61 (absolute gap: 0.07). The ``unknown'' gender category (LiveBeauty, no labels) performs near the overall average.\\
+
+\section{Feature Importance and SHAP Analysis}
+
+\begin{table}[h]
+\centering
+\caption{Top-5 features by mean absolute SHAP value, per ethnicity.}
+\label{tab:shap}
+\small
+\begin{tabular}{llc}
+\toprule
+\textbf{Ethnicity} & \textbf{Top-5 Features (ranked)} & \textbf{Top SHAP} \\
+\midrule
+Asian & nose\_width, eye\_width, eye\_area, mouth\_chin, lip\_fullness & 0.270 \\
+Black & nose\_width, mouth\_chin, eye\_width, eye\_area, interpupillary & 0.702 \\
+Caucasian & mouth\_chin, nose\_width, eye\_width, eye\_area, upper\_lip & 0.284 \\
+Hispanic & nose\_width, eye\_width, mouth\_chin, eye\_area, upper\_lip & 0.337 \\
+Indian & nose\_width, eye\_width, mouth\_chin, eye\_area, eye\_spacing & 0.340 \\
+Mid-Eastern & nose\_width, eye\_width, mouth\_chin, eye\_area, eye\_spacing & 0.327 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three features---\textbf{nose width ratio}, \textbf{eye width ratio}, and \textbf{mouth-chin ratio}---consistently appear in the top-3 across all ethnic groups. However, the magnitude of influence differs dramatically: for Black faces, nose width ratio has 2.6$\times$ the SHAP importance (0.702) compared to Asian faces (0.270). This suggests the model relies more heavily on nose geometry to distinguish attractiveness within the Black subgroup, possibly because nose proportions show higher within-group variance for this ethnicity.\\
+Notably, \textbf{canthal tilt}---despite its popularity in online beauty discourse---ranks near the bottom of feature importance across all groups, suggesting it has minimal predictive value when other geometric features are available. Symmetry-based features (facial symmetry, eye symmetry) show Pearson correlation with attractiveness below $r=0.04$, likely reflecting MediaPipe's design: landmark detection places symmetric landmarks by construction, introducing an inherent bias. Eye asymmetry (difference in left-right eye height) conversely shows mild signal at $r=-0.11$.\\
+
+\section{Comparison to CNN-Based State-of-the-Art}
+
+\begin{table}[h]
+\centering
+\caption{Comparison with published results on SCUT-FBP5500.}
+\label{tab:sota}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Method} & \textbf{Input} & \textbf{MAE} & \textbf{Pearson $r$} \\
+\midrule
+ResNet-18 \cite{liang2018scut} & Raw pixels & --- & 0.89 \\
+ArcFace + Ridge \cite{deng2019arcface} & CNN embeddings & --- & 0.91 \\
+\midrule
+Our XGBoost & 30 geometric features & 0.554 & 0.71 \\
+Our MLP & 30 geometric features & 0.544 & 0.71 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CNN approaches achieve $r \approx 0.89$--$0.92$ on SCUT-FBP5500 by learning directly from pixel data. Our geometry-based approach reaches $r \approx 0.71$ on a harder multi-dataset evaluation, representing a notable gap. The differences arise from three sources:
+
+\begin{enumerate}
+    \item \textbf{Texture and appearance cues}: CNNs capture skin quality, hair style, grooming, and color---features that geometry alone cannot encode. These texture cues likely account for the majority of the gap.
+    \item \textbf{Holistic pattern learning}: Deep networks learn high-level ``gestalt'' representations (e.g., face shape as a whole) rather than relying on predefined ratios between landmark pairs.
+    \item \textbf{Evaluation setting}: Published CNN results use within-dataset train/test splits on SCUT-FBP5500 (ethnically homogeneous). Our evaluation uses a combined multi-ethnic corpus where cross-cultural variation in beauty standards adds noise.
+\end{enumerate}
+
+Despite the performance gap, our approach offers two advantages that CNNs lack: (1)~full interpretability---we can identify exactly which proportions drive attractiveness for each ethnic group; and (2)~auditability for bias---SHAP decomposition reveals when the model relies on ethnically-correlated features, enabling targeted fairness interventions.\\
+
+\section{Limitations}
+
+\begin{itemize}
+    \item \textbf{Data imbalance}: With 80\% Asian faces, results for minority groups have wider confidence intervals and the absolute fairness gap (0.32 z-score) reflects insufficient representation.
+    \item \textbf{Annotation bias}: Attractiveness ratings reflect rater demographics (predominantly East Asian for LiveBeauty, mixed for MEBeauty), which we cannot fully decouple from subject ethnicity.
+    \item \textbf{Texture exclusion}: By design, our model ignores skin texture, color, hair, and grooming---features that undoubtedly influence attractiveness judgments and explain most of the gap to CNN methods.
+    \item \textbf{Regression-to-the-mean}: All models show std ratios below 1.0 (0.63--0.85), indicating compressed prediction ranges. The Ranker model partially addresses this.
+    \item \textbf{Z-score assumption}: Our normalization assumes approximately Gaussian score distributions within each dataset; deviations (e.g., LiveBeauty's left skew) may distort tail predictions.
+\end{itemize}
+
+% ============================================================================
+\chapter{Conclusion}
+\label{ch:conclusion}
+% ============================================================================
+
+We demonstrated that 30 interpretable geometric features extracted from facial landmarks can predict human attractiveness ratings with substantial accuracy (MAE~=~0.544, up to 36.6\% improvement over a mean-predictor baseline) when trained on a diverse multi-ethnic corpus of 17,870 faces across 3 datasets and 6 ethnic groups. Compared to CNN-based state-of-the-art ($r \approx 0.89$--$0.92$ on SCUT-FBP5500), our geometry-only approach achieves $r \approx 0.71$ on a harder multi-dataset evaluation---a gap explained primarily by texture cues (skin, hair, grooming) that landmarks cannot capture.\\
+Our cross-dataset experiments confirm that models trained on ethnically homogeneous data (SCUT-FBP5500: Asian/Caucasian only) generalize poorly to diverse populations ($r = 0.28$ on MEBeauty). Combining heterogeneous datasets substantially improves both overall performance and cross-ethnic fairness. Multi-model fairness comparison reveals an absolute fairness gap of 0.32--0.46 z-score units between best- and worst-served ethnic groups, consistent across all model families---confirming that the disparity is driven by data scarcity rather than model architecture.\\
+The key geometric predictors of attractiveness---nose width ratio, eye width ratio, and mouth-chin proportions---are consistent across ethnicities, while their relative magnitudes vary (2.6$\times$ higher SHAP importance for nose width in Black faces vs.\ Asian faces), providing evidence that beauty perception has both universal and culture-specific geometric components.\\
+\textbf{Future work} should: (1)~acquire balanced samples across ethnic groups to evaluate whether fairness gaps narrow with equal representation; (2)~integrate rater demographic information to distinguish rater-ethnicity bias from ratee-ethnicity bias; (3)~combine landmark-based geometric features with texture-based deep learning embeddings (e.g., ArcFace) to close the gap to CNN state-of-the-art; and (4)~evaluate fairness-aware loss functions and their accuracy--fairness trade-offs.
+
+\cleardoubleemptypage
+\bibliography{refs}
+
+\appendix
+
+\backmatter
+
+\chapter{Ehrenwörtliche Erklärung}
+
+Ich versichere, dass ich die beiliegende Bachelor-, Master-, Seminar-, oder Projektarbeit ohne Hilfe Dritter und ohne Benutzung anderer als der angegebenen Quellen und in der untenstehenden Tabelle angegebenen Hilfsmittel angefertigt und die den benutzten Quellen wörtlich oder inhaltlich entnommenen Stellen als solche kenntlich gemacht habe. Diese Arbeit hat in gleicher oder ähnlicher Form noch keiner Prüfungsbehörde vorgelegen.
+
+\begin{center}
+  \textbf{Declaration of Used AI Tools} \\[.3em]
+  \begin{tabularx}{\textwidth}{lXlc}
+    \toprule
+    Tool & Purpose & Where? & Useful? \\
+    \midrule
+    claude & code review & Python scripts & + \\
+        \midrule
+    DeepL & translation & throughout & + \\
+            \midrule
+    Quillbot & grammar check & throughout & + \\
+    \bottomrule
+  \end{tabularx}
+\end{center}
+
+\vspace{2cm}
+\noindent Unterschrift\\
+\noindent Mannheim, den 17.~Mai 2026 \hfill
+
+\end{document}
