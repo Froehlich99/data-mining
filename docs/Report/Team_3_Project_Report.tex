@@ -286,7 +286,6 @@ Notably, \textbf{canthal tilt}---despite its popularity in online beauty discour
 \textbf{Method} & \textbf{Input} & \textbf{MAE} & \textbf{Pearson $r$} \\
 \midrule
 ResNet-18 \cite{liang2018scut} & Raw pixels & --- & 0.89 \\
-ArcFace + Ridge \cite{deng2019arcface} & CNN embeddings & --- & 0.91 \\
 \midrule
 Our XGBoost & 30 geometric features & 0.554 & 0.71 \\
 Our MLP & 30 geometric features & 0.544 & 0.71 \\
@@ -294,7 +293,7 @@ Our MLP & 30 geometric features & 0.544 & 0.71 \\
 \end{tabular}
 \end{table}
 
-CNN approaches achieve $r \approx 0.89$--$0.92$ on SCUT-FBP5500 by learning directly from pixel data. Our geometry-based approach reaches $r \approx 0.71$ on a harder multi-dataset evaluation, representing a notable gap. The differences arise from three sources:
+CNN approaches achieve $r \approx 0.89$ on SCUT-FBP5500 by learning directly from pixel data. Our geometry-based approach reaches $r \approx 0.71$ on a harder multi-dataset evaluation, representing a notable gap. The differences arise from three sources:
 
 \begin{enumerate}
     \item \textbf{Texture and appearance cues}: CNNs capture skin quality, hair style, grooming, and color---features that geometry alone cannot encode. These texture cues likely account for the majority of the gap.
