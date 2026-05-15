@@ -139,8 +139,9 @@ Proportions & 4 & midface\_ratio, lower\_face\_ratio, phi\_deviation, facial\_th
 
 \section{Data Cleaning}
 
-No missing value imputation was required since MediaPipe either produces a full landmark set or fails entirely (54 images removed). Features with physically implausible values are capped at the 99.5th percentile.\\
+No missing value imputation was required since MediaPipe either produces a full landmark set or fails entirely (54 images removed). Features with physically implausible values are capped at the 99.5th percentile, which also serves as a validity check for ratios that should lie within plausible anatomical ranges. We verified that the three datasets contain no duplicate images, and metadata fields (gender, ethnicity) were consistent within each source so no inconsistency resolution was required.\\
 \textbf{Outlier detection}: We flag samples with high annotator disagreement by computing the per-sample standard deviation of rater scores. Samples in the top 10\% by standard deviation within each dataset are marked as ``high variance.'' This information is available for SCUT-FBP5500 and MEBeauty; for LiveBeauty, variance data is largely unavailable ($\approx$90\% zero values), so flagging is not applied there.\\
+\textbf{Binning and feature selection}: Binning and explicit feature-subset selection were not applied: the 39 features are continuous geometric ratios where binning would discard precision, and the feature set is small enough that all candidates can be retained for the modeling stage.\\
 
 
 % ============================================================================
@@ -159,7 +160,7 @@ Hyperparameters for gradient-boosted trees are optimized with \textbf{Optuna} \c
 \textbf{Holdout Test Set}: We use a stratified 80/20 train/test split (stratified by ethnicity) with 5-fold CV on the training portion. Within each fold, 10\% is held out for early stopping.
 \textbf{Cross-Dataset Generalization}: We train on one dataset and evaluate on the others (6 combinations) to test ethnic transfer.
 \textbf{Fairness}: Using out-of-fold predictions, we compute per-ethnicity and per-gender metrics. Fairness is quantified via the absolute fairness gap (max group MAE $-$ min group MAE).\\
-Our primary metric is \textbf{MAE} (Mean Absolute Error), reported on each dataset's native rating scale (1--5 for SCUT and LiveBeauty, 1--10 for MEBeauty). We train on z-normalized scores to combine datasets with different scales, but convert prediction errors back to native units for interpretability. We adopt Spearman $\rho$ as the primary correlation metric because it measures ranking ability independent of target distribution shape, making it valid across both continuous (SCUT, MEBeauty) and near-binary (LiveBeauty) targets. Pearson $r$ is reported alongside for comparability with prior literature.\\
+Our primary metric is \textbf{MAE} (Mean Absolute Error), reported on each dataset's native rating scale (1--5 for SCUT and LiveBeauty, 1--10 for MEBeauty). We train on z-normalized scores to combine datasets with different scales, but convert prediction errors back to native units for interpretability. We adopt Spearman $\rho$ as the primary correlation metric because it measures ranking ability independent of target distribution shape, making it valid across both continuous (SCUT, MEBeauty) and near-binary (LiveBeauty) targets. Pearson $r$ is reported alongside for comparability with prior literature. As this is a regression task with symmetric error costs, no cost matrix is applied.\\
 
 % ============================================================================
 \chapter{Results and Discussion}
