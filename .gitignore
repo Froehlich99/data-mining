@@ -13,6 +13,7 @@ uv.lock
 code/datasets/MEBeauty-database-main/
 code/datasets/SCUT-FBP5500_v2/
 code/datasets/LiveBeauty_public/
+code/datasets/*.zip
 
 # MediaPipe model binary (large, downloaded by process.py setup)
 code/data/face_landmarker_v2_with_blendshapes.task
@@ -27,10 +28,14 @@ code/catboost_info/
 code/data/fairness_results/
 
 # LaTeX build artifacts
-docs/*.aux
-docs/*.bbl
-docs/*.blg
-docs/*.log
-docs/*.synctex.gz
+*.aux
+*.bbl
+*.blg
+*.log
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+texput.log
 
 .direnv
