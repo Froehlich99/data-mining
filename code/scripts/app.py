@@ -20,7 +20,7 @@ from flask import Flask, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from models.registry import load_model
-from scripts.process import MODEL_PATH, compute_features, draw_debug_overlay
+from scripts.process import MODEL_PATH, compute_features, draw_lines_overlay
 
 # ---------------------------------------------------------------------------
 # Parse args / env
@@ -104,7 +104,7 @@ def analyze_image(img_bgr):
         "score_5": round(z * sc_std + sc_mean, 1),
     }
 
-    overlay = draw_debug_overlay(img_bgr, landmarks, w, h, features)
+    overlay = draw_lines_overlay(img_bgr, landmarks, w, h)
     return scores, overlay
 
 
@@ -144,104 +144,121 @@ HTML_PAGE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Face Analysis</title>
+<title>Facial Attractiveness Analysis</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #1a1a2e; color: #eee; min-height: 100vh;
+    background: #ffffff; color: #1a1a1a; min-height: 100vh;
     display: flex; flex-direction: column; align-items: center;
   }
-  h1 { margin: 30px 0 10px; font-size: 1.6rem; font-weight: 600; }
-  .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 25px; }
+  header {
+    width: 100%%; padding: 32px 24px 24px;
+    border-bottom: 1px solid #eaeaea; text-align: center;
+  }
+  h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; }
+  .subtitle { color: #666; font-size: 0.85rem; margin-top: 6px; }
+
+  main { width: 100%%; max-width: 1100px; padding: 32px 24px; }
 
   #dropzone {
-    width: 90%%; max-width: 600px; min-height: 200px;
-    border: 2px dashed #444; border-radius: 12px;
+    width: 100%%; min-height: 220px;
+    border: 1.5px dashed #d0d0d0; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 10px;
-    transition: border-color 0.2s, background 0.2s;
+    transition: border-color 0.15s, background 0.15s;
     cursor: pointer; padding: 40px;
+    background: #fafafa;
   }
-  #dropzone.dragover { border-color: #646cff; background: rgba(100,108,255,0.08); }
-  #dropzone .icon { font-size: 2.5rem; opacity: 0.4; }
-  #dropzone p { color: #888; }
+  #dropzone:hover, #dropzone.dragover {
+    border-color: #1a1a1a; background: #f5f5f5;
+  }
+  #dropzone p { color: #666; font-size: 0.95rem; }
   #dropzone input { display: none; }
 
-  #loading { display: none; margin: 30px 0; color: #888; }
+  #loading { display: none; margin: 32px 0; color: #666; text-align: center; }
   #loading.active { display: block; }
 
-  #results { display: none; width: 90%%; max-width: 1000px; margin: 30px 0; }
-  #results.active { display: flex; flex-wrap: wrap; gap: 25px; justify-content: center; }
+  #results { display: none; }
+  #results.active {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 32px; align-items: start;
+  }
 
   #overlay-img {
-    max-width: 100%%; border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    width: 100%%; border-radius: 8px;
+    border: 1px solid #eaeaea;
   }
 
-  .scores {
-    display: flex; flex-direction: column; gap: 14px;
-    min-width: 200px;
-  }
+  .scores { display: flex; flex-direction: column; gap: 12px; }
   .score-card {
-    background: #16213e; border-radius: 10px; padding: 20px;
-    text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    border: 1px solid #eaeaea; border-radius: 8px; padding: 18px 20px;
+    background: #ffffff;
   }
-  .score-card .label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-  .score-card .value { font-size: 2.4rem; font-weight: 700; margin: 6px 0; }
-  .score-card .scale { font-size: 0.75rem; color: #666; }
-  .score-10 .value { color: #646cff; }
-  .score-5 .value { color: #42b883; }
-  .score-z .value { color: #888; font-size: 1.4rem; }
+  .score-card .label {
+    font-size: 0.72rem; color: #888; text-transform: uppercase;
+    letter-spacing: 0.06em; font-weight: 500;
+  }
+  .score-card .value {
+    font-size: 2.2rem; font-weight: 600; margin: 4px 0 2px;
+    color: #1a1a1a; letter-spacing: -0.02em;
+  }
+  .score-card .scale { font-size: 0.78rem; color: #888; }
 
-  #error { color: #ff6b6b; margin: 20px 0; display: none; }
-  #error.active { display: block; }
-
-  .retry { margin-top: 10px; }
+  .retry { margin-top: 8px; }
   .retry button {
-    background: #333; color: #ccc; border: 1px solid #555;
-    padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+    background: #ffffff; color: #1a1a1a; border: 1px solid #d0d0d0;
+    padding: 9px 16px; border-radius: 6px; cursor: pointer;
+    font-size: 0.85rem; font-family: inherit;
+    transition: border-color 0.15s, background 0.15s;
   }
-  .retry button:hover { background: #444; }
+  .retry button:hover { border-color: #1a1a1a; background: #fafafa; }
+
+  #error { color: #c1272d; margin: 20px 0; display: none; text-align: center; }
+  #error.active { display: block; }
 </style>
 </head>
 <body>
 
-<h1>Facial Attractiveness Analysis</h1>
-<p class="subtitle">Geometric beauty markers + """ + args.model + """</p>
+<header>
+  <h1>Facial Attractiveness Analysis</h1>
+  <p class="subtitle">Geometric beauty markers + """ + args.model + """</p>
+</header>
 
-<div id="dropzone" onclick="document.getElementById('fileinput').click()">
-  <div class="icon">&#128247;</div>
-  <p>Drag & drop a photo here, or click to select</p>
-  <input type="file" id="fileinput" accept="image/*">
-</div>
-
-<div id="loading">Analyzing...</div>
-<div id="error"></div>
-
-<div id="results">
-  <div>
-    <img id="overlay-img" alt="Analysis overlay">
+<main>
+  <div id="dropzone" onclick="document.getElementById('fileinput').click()">
+    <p>Drag &amp; drop a photo here, or click to select</p>
+    <input type="file" id="fileinput" accept="image/*">
   </div>
-  <div class="scores">
-    <div class="score-card score-10">
-      <div class="label">MEBeauty Scale</div>
-      <div class="value" id="val-10">&mdash;</div>
-      <div class="scale">out of 10</div>
+
+  <div id="loading">Analyzing&hellip;</div>
+  <div id="error"></div>
+
+  <div id="results">
+    <div>
+      <img id="overlay-img" alt="Analysis overlay">
     </div>
-    <div class="score-card score-5">
-      <div class="label">SCUT Scale</div>
-      <div class="value" id="val-5">&mdash;</div>
-      <div class="scale">out of 5</div>
+    <div class="scores">
+      <div class="score-card">
+        <div class="label">MEBeauty Scale</div>
+        <div class="value" id="val-10">&mdash;</div>
+        <div class="scale">out of 10</div>
+      </div>
+      <div class="score-card">
+        <div class="label">SCUT Scale</div>
+        <div class="value" id="val-5">&mdash;</div>
+        <div class="scale">out of 5</div>
+      </div>
+      <div class="score-card">
+        <div class="label">Z-Score</div>
+        <div class="value" id="val-z">&mdash;</div>
+        <div class="scale">standard deviations from mean</div>
+      </div>
+      <div class="retry"><button onclick="reset()">Try another photo</button></div>
     </div>
-    <div class="score-card score-z">
-      <div class="label">Z-Score</div>
-      <div class="value" id="val-z">&mdash;</div>
-      <div class="scale">standard deviations from mean</div>
-    </div>
-    <div class="retry"><button onclick="reset()">Try another photo</button></div>
   </div>
-</div>
+</main>
 
 <script>
 const dropzone = document.getElementById('dropzone');

@@ -458,6 +458,62 @@ C_ORANGE = (0, 165, 255)
 C_LIME = (0, 255, 128)
 
 
+def draw_lines_overlay(img, landmarks, w, h):
+    """Draw measurement lines on an upscaled image. No legend, no text, no dot landmarks."""
+    scale = DEBUG_SIZE / max(w, h)
+    canvas = cv2.resize(
+        img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LANCZOS4
+    )
+
+    def pt(idx):
+        p = lm_xy(landmarks, idx, w, h) * scale
+        return tuple(p.astype(int))
+
+    cv2.line(canvas, pt(FACE_LEFT), pt(FACE_RIGHT), C_WHITE, 1)
+    cv2.line(canvas, pt(FACE_TOP), pt(FACE_BOTTOM), C_WHITE, 1)
+
+    cv2.line(canvas, pt(L_EYE_INNER), pt(L_EYE_OUTER), C_YELLOW, 2)
+    cv2.line(canvas, pt(R_EYE_OUTER), pt(R_EYE_INNER), C_YELLOW, 2)
+
+    cv2.line(canvas, pt(L_EYE_TOP), pt(L_EYE_BOTTOM), C_CYAN, 1)
+    cv2.line(canvas, pt(R_EYE_TOP), pt(R_EYE_BOTTOM), C_CYAN, 1)
+
+    cv2.line(canvas, pt(L_BROW), pt(L_EYE_TOP), C_PINK, 1)
+    cv2.line(canvas, pt(R_BROW), pt(R_EYE_TOP), C_PINK, 1)
+    cv2.line(canvas, pt(L_BROW_TOP), pt(L_EYE_TOP), C_PINK, 1)
+    cv2.line(canvas, pt(R_BROW_TOP), pt(R_EYE_TOP), C_PINK, 1)
+
+    cv2.line(canvas, pt(NOSE_LEFT), pt(NOSE_RIGHT), C_GREEN, 2)
+    cv2.line(canvas, pt(NOSE_BRIDGE_TOP), pt(NOSE_BOTTOM), C_GREEN, 1)
+
+    cv2.line(canvas, pt(LIP_LEFT), pt(LIP_RIGHT), C_RED, 2)
+    cv2.line(canvas, pt(UPPER_LIP_TOP), pt(LOWER_LIP_BOTTOM), C_RED, 1)
+    cv2.line(canvas, pt(CUPID_BOW_LEFT), pt(CUPID_BOW_RIGHT), C_ORANGE, 1)
+
+    cv2.line(canvas, pt(JAW_LEFT), pt(JAW_RIGHT), C_BLUE, 1)
+    cv2.line(canvas, pt(JAW_ANGLE_LEFT_ABOVE), pt(JAW_LEFT), C_BLUE, 1)
+    cv2.line(canvas, pt(JAW_LEFT), pt(JAW_ANGLE_LEFT_BELOW), C_BLUE, 1)
+    cv2.line(canvas, pt(JAW_ANGLE_RIGHT_ABOVE), pt(JAW_RIGHT), C_BLUE, 1)
+    cv2.line(canvas, pt(JAW_RIGHT), pt(JAW_ANGLE_RIGHT_BELOW), C_BLUE, 1)
+
+    cv2.line(canvas, pt(CHIN_LEFT), pt(CHIN_RIGHT), C_LIME, 1)
+
+    cv2.line(canvas, pt(L_EYE_INNER), pt(R_EYE_INNER), C_MAGENTA, 1)
+
+    try:
+        cv2.circle(canvas, pt(L_IRIS_CENTER), 4, C_MAGENTA, -1)
+        cv2.circle(canvas, pt(R_IRIS_CENTER), 4, C_MAGENTA, -1)
+        cv2.circle(canvas, pt(L_IRIS_BOTTOM), 2, C_MAGENTA, -1)
+        cv2.circle(canvas, pt(R_IRIS_BOTTOM), 2, C_MAGENTA, -1)
+    except IndexError:
+        pass
+
+    mid_x = (pt(FACE_LEFT)[0] + pt(FACE_RIGHT)[0]) // 2
+    cv2.line(canvas, (mid_x, pt(FACE_TOP)[1]), (mid_x, pt(FACE_BOTTOM)[1]), C_GRAY, 1)
+
+    return canvas
+
+
 def draw_debug_overlay(img, landmarks, w, h, features):
     """Draw landmark overlays on an upscaled image with a legend panel."""
     # Upscale image
