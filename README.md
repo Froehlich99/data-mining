@@ -6,13 +6,26 @@ The full write-up is in [`docs/Report/Team_3_Project_Report.pdf`](docs/Report/Te
 
 ## Datasets
 
-| Dataset | N | Scale | Ethnicities | Raters |
-|---------|---|-------|-------------|--------|
-| [MEBeauty](https://github.com/fbplab/MEBeauty-database) | 2,370 | 1-10 | asian, caucasian, black, hispanic, indian, mideastern | ~300 |
-| [SCUT-FBP5500](https://github.com/HCIILAB/SCUT-FBP5500-Database-Release) | 5,500 | 1-5 | asian, caucasian | 60 |
-| [LiveBeauty](https://github.com/FredaXYu/LiveBeauty) | 10,000 | 1-5 | asian | ~20 per face |
+| Dataset | N | Scale | Ethnicities | Raters | Source |
+|---------|---|-------|-------------|--------|--------|
+| MEBeauty | 2,370 | 1-10 | asian, caucasian, black, hispanic, indian, mideastern | ~300 | [github.com/fbplab/MEBeauty-database](https://github.com/fbplab/MEBeauty-database/tree/main) |
+| SCUT-FBP5500 | 5,500 | 1-5 | asian, caucasian | 60 | [github.com/HCIILab/SCUT-FBP5500-Database-Release](https://github.com/hciilab/scut-fbp5500-database-release) |
+| LiveBeauty | 10,000 | 1-5 | asian | ~20 per face | [tianchi.aliyun.com/dataset/216302](https://tianchi.aliyun.com/dataset/216302) |
 
 Scores are z-normalized per dataset so they can be combined (17,870 total).
+
+### Downloading
+
+MEBeauty and SCUT-FBP5500 are fetched automatically by `uv run scripts/prepare.py` (clones the MEBeauty repo at a pinned commit and downloads SCUT from Google Drive). Both land in `code/datasets/` under `MEBeauty-database-main/` and `SCUT-FBP5500_v2/` respectively.
+
+LiveBeauty requires a manual download (Aliyun Tianchi login). After downloading, extract it so the directory structure looks like:
+
+```
+code/datasets/LiveBeauty_public/
+  images/
+  labels/
+  ...
+```
 
 ## Setup & Usage
 
